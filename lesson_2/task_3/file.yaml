@@ -1,7 +1,0 @@
-items:
-- computer
-- monitor
-items_price:
-  computer: 300€ - 1000€
-  monitor: 200€ - 400€
-items_quantity: 2

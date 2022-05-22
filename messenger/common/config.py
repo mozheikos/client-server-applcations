@@ -1,0 +1,3 @@
+HOST = ''
+PORT = 7777
+BUFFER_SIZE = 1024

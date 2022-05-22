@@ -1,0 +1,3 @@
+PORT = 7777
+HOST = ''
+BUFF_SIZE = 1024
