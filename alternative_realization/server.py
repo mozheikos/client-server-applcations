@@ -61,7 +61,7 @@ class Handler(BaseRequestHandler):
 
         """Благодаря методы handle_error серверного класса проверки можно делать через assert, 
         исключение обработается"""
-        assert received.action in self.allowed_request_actions, 'Method not allowed'
+        assert received.action in self.allowed_request_actions, '400, Method not allowed'
 
         print(f"connect from {self.client_address[0]}:{self.client_address[1]} accepted")
         handler_method = self._get_method(received.action)
@@ -98,12 +98,11 @@ class MyServer(TCPServer):
         import traceback
         exception, error = traceback.format_exc().splitlines()[-1].split(':', 1)
         if exception == 'AssertionError':
-            """Все assert'ы прилетят сюда и будет сформирован ответ сервера с указанием ошибки. 
-            Как быть со статус-кодами разберемся, хардкода точно не будет"""
-            status_code = 400
+            """Все assert'ы прилетят сюда и будет сформирован ответ сервера с указанием ошибки"""
+            status_code, error = error.split(", ")
             timestamp = datetime.datetime.now()
             response = Response(
-                response=status_code,
+                response=int(status_code),
                 time=timestamp,
                 error=error.strip()
             )
