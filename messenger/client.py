@@ -49,4 +49,7 @@ def main():
 if __name__ == '__main__':
 
     host, port = get_cmd_arguments(cmd_line_args=sys.argv[1:])
+    if host == '':
+        print("Не задан адрес сервера")
+        exit(1)
     main()

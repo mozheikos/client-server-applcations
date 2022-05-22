@@ -91,4 +91,7 @@ def main():
 if __name__ == '__main__':
 
     bind_host, bind_port = get_cmd_arguments(cmd_line_args=sys.argv[1:])
+    if bind_host == '':
+        print("Не задан адрес сервера")
+        exit(1)
     main()
