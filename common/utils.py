@@ -1,4 +1,4 @@
-from .config import HOST, PORT
+from common.config import HOST, PORT
 
 
 def get_cmd_arguments(cmd_line_args: list) -> tuple:
@@ -23,7 +23,7 @@ def get_cmd_arguments(cmd_line_args: list) -> tuple:
                 arguments[k] = v
 
     elif cmd_length:
-        print('Invalid command line arguments')
+        raise AttributeError('Invalid command line arguments')
     else:
         pass
 
