@@ -7,6 +7,7 @@ import json
 from base import BaseTCPSocket
 from common.config import Status, DEFAULT_ENCODING
 from common.utils import get_cmd_arguments
+from log.server_log import logger
 from templates.templates import Response, Request
 
 
@@ -18,6 +19,7 @@ class RequestHandler:
         self.request = request
         self.client_address = client_address
         self.server = server
+        logger.debug("Handler initialization OK")
 
     def get_method(self):
 
@@ -27,11 +29,11 @@ class RequestHandler:
         return methods.get(self.message.action)
 
     def send_response(self, response: Response):
-        current_time = datetime.now()
 
         self.request.send(response.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
-
-        stdout = f"INFO: {current_time} - {self.client_address[0]} - {response.response}"
+        
+        logger.debug("Sending response OK")
+        stdout = f"{self.client_address[0]} - {response.response}"
         return stdout
 
     def handle_presence(self):
@@ -44,12 +46,16 @@ class RequestHandler:
             alert=alert
         )
         stdout = self.send_response(response)
+
+        logger.debug("Building presense response OK")
         return stdout
 
     def handle_request(self):
 
         self.message = Request.parse_raw(self.request.recv(self.server.buffer_size))
         handler = self.get_method()
+
+        logger.debug("Get handler OK")
         return handler()
 
 
@@ -81,9 +87,12 @@ class TCPSocketServer(BaseTCPSocket):
             assert isinstance(pool_size, int), "Variable 'pool_size' must be int"
             self.pool_size = pool_size
 
+        logger.debug("Initializing server OK")
+
         if bind_and_listen:
             self.bind_and_listen()
-
+        
+            
     def bind_and_listen(self) -> None:
         """
             Initialize server socket. Calls on initialization of class automatically.
@@ -93,31 +102,37 @@ class TCPSocketServer(BaseTCPSocket):
         self.connection.bind((self.host, self.port))
         self.connection.listen(self.pool_size)
 
+        host = self.host if self.host else 'localhost'
+        logger.debug(f"Server bind and listen on {host}:{self.port}")
+
     def serve(self):
         while True:
 
             self.request, address = self.connection.accept()
             try:
                 stdout = self.handle_request(address)
-                print(stdout)
+                logger.info(stdout)
 
             except ValidationError as error:
                 """Ожидаю ValidationError, так как проверять данные буду средствами Pydantic,
                 а он как раз возбуждает эту ошибку"""
                 stderr = self.handle_error(error, address)
-                print(stderr)
+
+                logger.debug(stderr)
             
             except AssertionError as error:
                 stderr = self.handle_error(error, address)
+                
+                logger.debug(stderr)
             
             except Exception as e:
-                """Пока просто выведу в консоль"""
-                print(e)
+                logger.error(e)
 
             finally:
                 """Что бы ни было, после обработки соединение закрываем"""
                 self.close_request()
-                print(f"Connection for {address[0]} closed")
+                
+                logger.info(f"Connection for {address[0]} closed")
                 
     def close_request(self):
         self.request.close()
@@ -125,6 +140,8 @@ class TCPSocketServer(BaseTCPSocket):
     def handle_request(self, address):
         handler = RequestHandler(self.request, address, self)
         result = handler.handle_request()
+
+        logger.debug("Request handled OK")
         return result
 
     def handle_error(self, error: Union[ValidationError, AssertionError], address: tuple):
@@ -136,18 +153,18 @@ class TCPSocketServer(BaseTCPSocket):
             error=msg
         ).json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
         self.request.send(response)
-        stderr = f"ERROR: {datetime.now().isoformat()} - {address[0]} - {msg}"
-        
+        stderr = f"{address[0]} - {msg}"
+
+        logger.debug("Validation Error handled OK")
         return stderr
 
 
 def main():
     with TCPSocketServer(host=srv_host, port=srv_port) as server:
-        print(f"Server now listen on {srv_host if srv_host else 'localhost'}:{srv_port}")
+        logger.info(f"Server now listen on {srv_host if srv_host else 'localhost'}:{srv_port}")
         server.serve()
 
 
 if __name__ == '__main__':
-
     srv_host, srv_port = get_cmd_arguments(cmd_line_args=sys.argv[1:])
     main()
