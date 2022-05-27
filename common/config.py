@@ -6,7 +6,8 @@ PORT = 7777
 BUFFER_SIZE = 1024
 DEFAULT_ENCODING = 'unicode-escape'
 
-DEBUG = True # set False to disable DEBUG log messages
+DEBUG = True  # set False to disable DEBUG log messages
+
 
 class Status(str, Enum):
     ok = '200 OK'
