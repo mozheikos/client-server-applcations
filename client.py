@@ -1,12 +1,10 @@
 from datetime import datetime
 import sys
 
-from pydantic import ValidationError
-
 from base import BaseTCPSocket
 from common.config import Action, DEFAULT_ENCODING
 from common.utils import get_cmd_arguments
-from log.client_log import logger
+from decorators import log
 from templates.templates import Request, User, Response
 
 
@@ -17,6 +15,7 @@ class TCPSocketClient(BaseTCPSocket):
 
     is_connected = False
     
+    @log
     def __init__(
             self,
             host: str = None,
@@ -34,25 +33,23 @@ class TCPSocketClient(BaseTCPSocket):
         self.username = username
         self.password = password
         
-        logger.debug("Client initialization OK")
         if connect:
             self.connect()
     
+    @log
     def connect(self):
-        try:
-            self.connection.connect((self.host, self.port))
-        except ConnectionRefusedError as e:
-            logger.error(e)
-        else:
-            logger.info(f'Connected on {self.host}:{self.port}')
-            self.is_connected = True
+        
+        self.connection.connect((self.host, self.port))
+        self.is_connected = True
     
+    @log
     def get_method(self, action):
         methods = {
             'presence': self.get_presence
         }
         return methods.get(action, None)
     
+    @log
     def get_presence(self):
         user: User = User(
             account_name=self.username,
@@ -65,50 +62,33 @@ class TCPSocketClient(BaseTCPSocket):
         )
         return request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
     
+    @log
     def send_request(self, request):
         self.connection.send(request)
-
-        logger.debug("Message send OK")
-        return self.receive()
     
+    @log
     def request(self, action, message: str = None):
         handler = self.get_method(action)
-        try:
-            assert handler, 'action not allowed'
-            assert self.is_connected, 'Not connected'
 
-            logger.debug("Handler method get OK")
-            
-            request = handler()
-            logger.debug(f"{handler.__name__} OK")
+        assert handler, 'Action not allowed'
+        assert self.is_connected, 'Not connected'
 
-            response = self.send_request(request)
-
-        except AssertionError as e:
-            logger.error(f"Message don't sent. Reason: {e}")
-            return
-        
-        except ValidationError as e:
-            logger.error("Invalid server response")
-            return
-        
-        return response
+        request = handler()
+        self.send_request(request)
+        self.receive()
     
+    @log
     def receive(self):
         received = self.connection.recv(self.buffer_size)
-
-        logger.debug("Data receive OK")
+        
+        assert received, 'No data received'
         response = Response.parse_raw(received)
-        return response
-
-
+        print(response.json(exclude_none=True, ensure_ascii=False, indent=4))
+        
+@log
 def main():
     with TCPSocketClient(host=cl_host, port=cl_port, username='test user', password='password', connect=True) as client:
-        result = client.request('presence')
-        if result:
-            logger.info(f"Response {result.response}")
-            print(result.json(exclude_none=True, ensure_ascii=False, indent=4))
-
+        client.request('presence')
 
 if __name__ == '__main__':
 
