@@ -25,3 +25,5 @@ class Action(str, Enum):
     join = 'join'
     leave = 'leave'
     msg = 'msg'
+    recv = 'recv'
+    server_shutdown = 'server_shutdown'

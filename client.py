@@ -1,19 +1,23 @@
+import os
+import socket
 from datetime import datetime
 import sys
+from time import sleep
 
 from base import BaseTCPSocket
-from common.config import Action, DEFAULT_ENCODING
+from common.config import Action, DEFAULT_ENCODING, Status
 from common.utils import get_cmd_arguments
 from decorators import log
-from templates.templates import Request, User, Response
+from templates.templates import Request, User, Response, Message
 
 
 class TCPSocketClient(BaseTCPSocket):
     
-    username: str = None
-    password: str = None
-
+    user: User
+    
     is_connected = False
+    
+    inbox = []
     
     @log
     def __init__(
@@ -30,9 +34,11 @@ class TCPSocketClient(BaseTCPSocket):
         
         super(TCPSocketClient, self).__init__(host, port, buffer)
         
-        self.username = username
-        self.password = password
-        
+        self.user = User(
+            account_name=username,
+            password=password,
+            status='online'
+        )
         if connect:
             self.connect()
     
@@ -40,42 +46,67 @@ class TCPSocketClient(BaseTCPSocket):
     def connect(self):
         
         self.connection.connect((self.host, self.port))
-        self.is_connected = True
+        self.send_presence()
+        if self.receive():
+            print(f'Connected {self.user.account_name}')
+            self.is_connected = True
     
     @log
     def get_method(self, action):
         methods = {
-            'presence': self.get_presence
+            'presence': self.send_presence,
+            'msg': self.send_message,
+            'recv': self.receive_message,
+            'quit': self.quit
         }
         return methods.get(action, None)
     
     @log
-    def get_presence(self):
-        user: User = User(
-            account_name=self.username,
-            status='online'
-        )
+    def send_presence(self):
+        
         request = Request(
             action=Action.presence,
             time=datetime.now().isoformat(),
-            user=user
+            user=self.user
         )
-        return request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
+        request = request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
+        self.send_request(request)
+    
+    @log
+    def receive_message(self):
+        data = self.connection.recv(self.buffer_size)
+        
+        if data:
+            message = Request.parse_raw(data)
+            if message.action == Action.msg:
+                print(f"{message.user.account_name}: {message.data.message}")
+            elif message.action == Action.server_shutdown:
+                self.is_connected = False
+        else:
+            self.is_connected = False
+    
+    @log
+    def send_message(self):
+        text = input('me: ')
+        message = Message(to='all', from_=self.user.account_name, message=text)
+        request = Request(action=Action.msg, time=datetime.now().isoformat(), user=self.user, data=message)
+        
+        if not self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)):
+            self.is_connected = False
     
     @log
     def send_request(self, request):
         self.connection.send(request)
-    
+        return True
+        
     @log
-    def request(self, action, message: str = None):
+    def request(self, action):
         handler = self.get_method(action)
 
         assert handler, 'Action not allowed'
         assert self.is_connected, 'Not connected'
 
-        request = handler()
-        self.send_request(request)
-        self.receive()
+        handler()
     
     @log
     def receive(self):
@@ -83,12 +114,72 @@ class TCPSocketClient(BaseTCPSocket):
         
         assert received, 'No data received'
         response = Response.parse_raw(received)
-        print(response.json(exclude_none=True, ensure_ascii=False, indent=4))
+        if response.response == Status.ok:
+            return True
+        return False
+    
+    @log
+    def quit(self):
+        request = Request(
+            action=Action.quit,
+            time=datetime.now().isoformat(),
+            user=self.user
+        )
+        self.connection.send(
+            request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
+        )
+        
         
 @log
 def main():
-    with TCPSocketClient(host=cl_host, port=cl_port, username='test user', password='password', connect=True) as client:
-        client.request('presence')
+    while True:
+        option = 0
+        while option not in ('1', '2'):
+            os.system('clear')
+            option = input('1. Login\n2. Quit\nInput option: ')
+        option = int(option)
+        if option == 2:
+            for i in range(1, 6, 1):
+                print(f'\rExiting{"." * i}', end='')
+                sleep(0.7)
+            print()
+            exit(0)
+        elif option == 1:
+            os.system('clear')
+            print('Input your username and password:')
+            username = input("username: ")
+            password = input("password: ")
+            with TCPSocketClient(host=cl_host, port=cl_port, username=username, password=password) as client:
+                os.system('clear')
+                client.connect()
+                if client.is_connected:
+                    try:
+                        action = 0
+                        while action not in ('1', '2'):
+                            os.system('clear')
+                            action = input('1. send\n2. receive\n')
+                        os.system('clear')
+                        action = int(action)
+                        if action == 1:
+                            print('Sending mode')
+                            mode = Action.msg
+                        else:
+                            print("Receiving messages")
+                            mode = Action.recv
+                        while client.is_connected:
+                            client.request(mode)
+                        print('Disconnected from server (press <Enter> to continue)')
+                        input()
+                    except KeyboardInterrupt:
+                        client.request(Action.quit)
+                        client.shutdown()
+                        exit(1)
+                else:
+                    print('Connection failed (press <Enter> to continue)')
+                    input()
+        else:
+            continue
+            
 
 if __name__ == '__main__':
 

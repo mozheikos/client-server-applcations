@@ -1,5 +1,10 @@
+import datetime
+from select import select
 from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM
-from common.config import HOST, PORT, BUFFER_SIZE
+
+from common.config import HOST, PORT, BUFFER_SIZE, Action, DEFAULT_ENCODING
+from templates.templates import Request
+from decorators import log
 """Решил что вот так будет совсем красиво. Сервер и клиент изначально представляют собой одно и то же - сокет, поэтому
 часть параметров у них общая и часть методов класса соответственно тоже (создание объекта сокета, установка некоторых
 параметров. Поэтому все общее я решил вынести в базовый класс"""
@@ -44,4 +49,86 @@ class BaseTCPSocket:
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.shutdown()
+
+
+class TCPSocketServer(BaseTCPSocket):
+    pool_size: int = 5
+    request_handler = None
+    connected = []
     
+    @log
+    def __init__(
+            self,
+            handler,
+            host: str = None,
+            port: int = None,
+            buffer: int = None,
+            pool_size: int = None,
+            bind_and_listen: bool = True
+    ):
+        """Initialize server class
+
+        Args:
+            host (str): address to listen (IPv4)
+            port (int): port to listen
+            buffer (int): size of receiving buffer, bytes
+            pool_size (int): listening queue size
+        """
+        super(TCPSocketServer, self).__init__(host, port, buffer)
+        
+        self.request_handler = handler
+        
+        if pool_size:
+            assert isinstance(pool_size, int), "Variable 'pool_size' must be int"
+            self.pool_size = pool_size
+        
+        if bind_and_listen:
+            self.bind_and_listen()
+    
+    @log
+    def bind_and_listen(self) -> None:
+        """
+            Initialize server socket. Calls on initialization of class automatically.
+            Can be called manually, if start = False
+        """
+        
+        self.connection.bind((self.host, self.port))
+        self.connection.listen(self.pool_size)
+        self.connected.append(self.connection)
+    
+    def accept_connection(self):
+        client, address = self.connection.accept()
+        self.connected.append(client)
+        print(f"{address[0]} connected")
+    
+    @log
+    def serve(self):
+        while True:
+            try:
+                read, write, _ = select(self.connected, self.connected, [])
+                
+                for sock in read:
+                    if sock is self.connection:
+                        self.accept_connection()
+                    else:
+                        self.handle_request(sock, write)
+            except KeyboardInterrupt:
+                for sock in write:
+                    if sock is self.connection:
+                        continue
+                    request = Request(
+                        action=Action.server_shutdown,
+                        time=datetime.datetime.now().isoformat()
+                    )
+                    try:
+                        sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
+                    except OSError:
+                        continue
+                self.shutdown()
+                break
+            
+    @log
+    def handle_request(self, client, writable):
+        handler = self.request_handler(client, self, writable)
+        handler.handle_request()
+        
