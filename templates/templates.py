@@ -1,6 +1,5 @@
-import datetime
 from typing import Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from common.config import Action, Status
 
@@ -15,7 +14,7 @@ class Base(BaseModel):
 
 class Message(Base):
     to: str
-    from_: str = Field(alias='from')
+    from_: str
     encoding: str = 'utf-8'
     message: str
 
@@ -28,14 +27,14 @@ class User(Base):
 
 class Request(Base):
     action: Action
-    time: datetime.datetime
+    time: str
     type: Optional[str]
-    user: User
+    user: Optional[User]
     data: Optional[Union[str, Message]]
 
 
 class Response(Base):
     response: Status
-    time: datetime.datetime
+    time: str
     alert: Optional[str]
     error: Optional[str]
