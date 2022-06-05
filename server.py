@@ -4,13 +4,11 @@ from pydantic import ValidationError
 import sys
 from typing import Union, List
 import json
-from base import BaseTCPSocket
 from common.config import Status, DEFAULT_ENCODING
 from common.utils import get_cmd_arguments
 from decorators import log
 from templates.templates import Response, Request
 from base import TCPSocketServer
-from select import select
 
 
 class RequestHandler:
@@ -62,7 +60,7 @@ class RequestHandler:
             if sock is not self.server and sock is not self.request:
                 sock.send(self.message.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
     
-    def handle_error(self, error: Union[ValidationError, AssertionError]):
+    def handle_error(self, error: Union[ValidationError, AssertionError, ConnectionError]):
         msg = ''
         if isinstance(error, ValidationError):
             error = json.loads(error.json())[0]

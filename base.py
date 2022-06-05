@@ -1,6 +1,7 @@
 import datetime
 from select import select
-from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM
+from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM, SHUT_RDWR
+from typing import List, Any
 
 from common.config import HOST, PORT, BUFFER_SIZE, Action, DEFAULT_ENCODING
 from templates.templates import Request
@@ -97,6 +98,8 @@ class TCPSocketServer(BaseTCPSocket):
         self.connected.append(self.connection)
     
     def accept_connection(self):
+        # Сделал немного иначе, без таймаута. При инициализации положил серверный сокет в список сокетов и проверяю в
+        # селекте, если он готов для чтения - вызываю accept
         client, address = self.connection.accept()
         self.connected.append(client)
         print(f"{address[0]} connected")
@@ -105,6 +108,7 @@ class TCPSocketServer(BaseTCPSocket):
     def serve(self):
         while True:
             try:
+                write: List[socket]
                 read, write, _ = select(self.connected, self.connected, [])
                 
                 for sock in read:
@@ -112,6 +116,9 @@ class TCPSocketServer(BaseTCPSocket):
                         self.accept_connection()
                     else:
                         self.handle_request(sock, write)
+                        
+            # KeyboardInterrupt возбуждается по CTRL + C, добавил обработку для корректного завершения и отправки
+            # клиентам сигнала о том, что сервер недоступен
             except KeyboardInterrupt:
                 for sock in write:
                     if sock is self.connection:
@@ -122,8 +129,10 @@ class TCPSocketServer(BaseTCPSocket):
                     )
                     try:
                         sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
+                        sock.close()
                     except OSError:
                         continue
+                self.connection.shutdown(SHUT_RDWR)
                 self.shutdown()
                 break
             

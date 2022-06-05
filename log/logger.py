@@ -1,9 +1,11 @@
 import os
 import logging
-import sys
+from logging import handlers
+
 from pathlib import Path
 
-from common.config import DEBUG
+"""Оставлю только логгер в файл. В качестве хэндлера установил RotateFileHandler, так как в режиме DEBUG лог растет
+ОЧЕНЬ быстро, за 2 вечера выполнения дз - больше гигабайта!!! Ну и уровень сделал ERROR"""
 
 PATH = Path(__file__).resolve().parent.parent
 if 'log_journal' not in os.listdir(PATH):
@@ -14,20 +16,16 @@ logger = logging.getLogger('client_logger')
 
 formatter = logging.Formatter("%(asctime)-2s %(levelname)-4s: %(message)s")
 
-# stdout_handler = logging.StreamHandler(sys.stdout)
-file_handler = logging.FileHandler(
+file_handler = handlers.RotatingFileHandler(
     filename=f"{PATH}/log_journal/log.log",
+    maxBytes=10240,
+    backupCount=10,
     encoding='utf-8'
     )
 
-
-# stdout_handler.setFormatter(formatter)
-# stdout_handler.setLevel(logging.INFO)
-
 file_handler.setFormatter(formatter)
-file_handler.setLevel(logging.DEBUG)
+file_handler.setLevel(logging.ERROR)
 
-# logger.addHandler(stdout_handler)
 logger.addHandler(file_handler)
 
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.ERROR)

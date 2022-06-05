@@ -1,6 +1,5 @@
-import datetime
 from typing import Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from common.config import Action, Status
 

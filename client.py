@@ -1,11 +1,10 @@
 import os
-import socket
 from datetime import datetime
 import sys
 from time import sleep
 
 from base import BaseTCPSocket
-from common.config import Action, DEFAULT_ENCODING, Status
+from common.config import Action, DEFAULT_ENCODING, Status, StopSendingError
 from common.utils import get_cmd_arguments
 from decorators import log
 from templates.templates import Request, User, Response, Message
@@ -87,11 +86,19 @@ class TCPSocketClient(BaseTCPSocket):
     
     @log
     def send_message(self):
+        
         text = input('me: ')
+        if text == '/exit':
+            raise StopSendingError
+        if not len(text):
+            return
+        if len(text) > 300:
+            print(f'Message too long {len(text)}')
         message = Message(to='all', from_=self.user.account_name, message=text)
         request = Request(action=Action.msg, time=datetime.now().isoformat(), user=self.user, data=message)
         
-        if not self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)):
+        result = self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
+        if not result:
             self.is_connected = False
     
     @log
@@ -161,13 +168,16 @@ def main():
                         os.system('clear')
                         action = int(action)
                         if action == 1:
-                            print('Sending mode')
+                            print(f'Sending messages, user:  {username}')
                             mode = Action.msg
                         else:
-                            print("Receiving messages")
+                            print(f"Receiving messages, user: {username}")
                             mode = Action.recv
                         while client.is_connected:
-                            client.request(mode)
+                            try:
+                                client.request(mode)
+                            except StopSendingError:
+                                break
                         print('Disconnected from server (press <Enter> to continue)')
                         input()
                     except KeyboardInterrupt:
