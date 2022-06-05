@@ -86,7 +86,7 @@ class TCPSocketClient(BaseTCPSocket):
     
     @log
     def send_message(self):
-        
+        to = input('to: ')
         text = input('me: ')
         if text == '/exit':
             raise StopSendingError
@@ -94,7 +94,7 @@ class TCPSocketClient(BaseTCPSocket):
             return
         if len(text) > 300:
             print(f'Message too long {len(text)}')
-        message = Message(to='all', from_=self.user.account_name, message=text)
+        message = Message(to=to, from_=self.user.account_name, message=text)
         request = Request(action=Action.msg, time=datetime.now().isoformat(), user=self.user, data=message)
         
         result = self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))

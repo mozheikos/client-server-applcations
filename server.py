@@ -1,3 +1,4 @@
+from collections import deque
 from socket import socket
 from datetime import datetime
 from pydantic import ValidationError
@@ -7,7 +8,7 @@ import json
 from common.config import Status, DEFAULT_ENCODING
 from common.utils import get_cmd_arguments
 from decorators import log
-from templates.templates import Response, Request
+from templates.templates import Response, Request, Client
 from base import TCPSocketServer
 
 
@@ -37,27 +38,43 @@ class RequestHandler:
         self.close_request()
     
     @log
-    def send_response(self, response: Response):
-
+    def send_response(self, status: Status, alert: str):
+    
+        current_time = datetime.now().isoformat()
+        response = Response(
+            response=status,
+            time=current_time,
+            alert=alert
+        )
+        
         self.request.send(response.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
         print(f"Response {self.request.getpeername()[0]} - {response.response}")
 
     @log
     def handle_presence(self):
-
-        current_time = datetime.now().isoformat()
-        alert = 'Успешно'
-        response = Response(
-            response=Status.ok,
-            time=current_time,
-            alert=alert
-        )
-        self.send_response(response)
+        connected: Client
+        user = self.message.user.account_name
+        connected = self.server.connected_users.get(user, None)
+        
+        if connected:
+            connected.sock.append(self.request)
+        else:
+            connected = Client(
+                user=self.message.user,
+                sock=[self.request],
+                data=deque()
+            )
+            self.server.connected_users[user] = connected
+        
+        self.send_response(status=Status.ok, alert='Success')
     
     def handle_message(self):
-        
-        for sock in self.clients:
-            if sock is not self.server and sock is not self.request:
+        to_send: Client
+        recipient = self.message.data.to
+        to_send = self.server.connected_users.get(recipient, None)
+        print(to_send)
+        for sock in to_send.sock:
+            if sock in self.clients:
                 sock.send(self.message.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
     
     def handle_error(self, error: Union[ValidationError, AssertionError, ConnectionError]):
@@ -72,12 +89,7 @@ class RequestHandler:
             self.close_request()
             
         else:
-            response = Response(
-                response=Status.bad_request,
-                time=datetime.now().isoformat(),
-                error=msg
-            )
-            self.send_response(response)
+            self.send_response(Status.bad_request, msg)
     
     @log
     def handle_request(self):
@@ -104,7 +116,11 @@ class RequestHandler:
 
     @log
     def close_request(self):
+        client: Client
         self.request.close()
+        client = self.server.connected_users.get(self.message.user.account_name, None)
+        if client:
+            client.sock.remove(self.request)
         self.server.connected.remove(self.request)
 
 

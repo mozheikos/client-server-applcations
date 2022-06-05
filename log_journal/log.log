@@ -1,0 +1,8 @@
+2022-06-06 00:12:46,561 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/server.py> <server.serve()>: local variable 'write' referenced before assignment
+2022-06-06 00:13:06,476 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/server.py> <server.serve()>: local variable 'write' referenced before assignment
+2022-06-06 00:16:48,343 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/base.py> <handler.handle_request()>: 'NoneType' object is not iterable
+2022-06-06 00:18:29,252 ERROR: <client.py> <result = self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))>: [Errno 32] Broken pipe
+2022-06-06 00:21:20,735 ERROR: <client.py> <client.request(Action.quit)>: Not connected
+2022-06-06 00:21:30,726 ERROR: <client.py> <client.request(Action.quit)>: Not connected
+2022-06-06 00:22:28,900 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/server.py> <self.close_request()>: 'NoneType' object has no attribute 'user'
+2022-06-06 00:22:28,901 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/server.py> <server.serve()>: file descriptor cannot be a negative integer (-1)
