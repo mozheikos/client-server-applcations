@@ -1,8 +1,7 @@
-from socket import socket
 from typing import Optional, Union, List, Deque
+from socket import socket
 
-import pydantic
-from pydantic import BaseModel, validator
+from pydantic import BaseModel
 
 from common.config import Action, Status
 

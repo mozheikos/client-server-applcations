@@ -70,9 +70,9 @@ class RequestHandler:
     
     def handle_message(self):
         to_send: Client
+        print(self.message.user.account_name, self.message.data.message)
         recipient = self.message.data.to
         to_send = self.server.connected_users.get(recipient, None)
-        print(to_send)
         for sock in to_send.sock:
             if sock in self.clients:
                 sock.send(self.message.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))

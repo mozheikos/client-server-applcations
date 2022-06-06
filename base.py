@@ -1,7 +1,7 @@
 import datetime
 from select import select
 from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM, SHUT_RDWR
-from typing import List, Any
+from typing import List
 
 from common.config import HOST, PORT, BUFFER_SIZE, Action, DEFAULT_ENCODING
 from templates.templates import Request
@@ -129,7 +129,7 @@ class TCPSocketServer(BaseTCPSocket):
                         time=datetime.datetime.now().isoformat()
                     )
                     try:
-                        sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
+                        # sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
                         sock.close()
                     except OSError:
                         continue
