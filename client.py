@@ -1,4 +1,3 @@
-from collections import deque
 from datetime import datetime
 import os
 from queue import Queue
@@ -24,6 +23,8 @@ class TCPSocketClient(BaseTCPSocket):
     action = None
     chat_stop = False
     chat = {}
+    lock = Lock()
+    to_print = True
     
     @log
     def __init__(
@@ -81,6 +82,7 @@ class TCPSocketClient(BaseTCPSocket):
         self.connection.send(
             request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
         )
+        self.is_connected = False
 
     @log
     def send_presence(self):
@@ -108,12 +110,18 @@ class TCPSocketClient(BaseTCPSocket):
         }
         return methods.get(action, None)
     
+    def get_contact(self, key):
+        if key not in self.chat.keys():
+            self.chat[key] = {}
+            self.chat[key]['new'] = Queue()
+            self.chat[key]['was_read'] = []
+        return self.chat.get(key, None)
+        
     @log
     def receive_message(self):
         """Put new inbox message to queue"""
-        # lock = Lock()
+        
         while self.is_connected:
-            # with lock:
             data = self.connection.recv(self.buffer_size)
             
             if data:
@@ -128,9 +136,8 @@ class TCPSocketClient(BaseTCPSocket):
     @log
     def send_message(self):
         """Get outbox message from queue and send it to server"""
-        # lock = Lock()
+        
         while self.is_connected:
-            # with lock:
             request = self.outbox.get(block=True)
             result = self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
             if not result:
@@ -139,15 +146,18 @@ class TCPSocketClient(BaseTCPSocket):
     @log
     def get_outbox_message(self, to: str):
         """Get message from user and put it to queue for send"""
-        # lock = Lock()
+        
+        contact = self.get_contact(to)
+
         os.system('clear')
         print(f'Chat with {to}')
+        self.chat_stop = False
         chat_history = Thread(target=self.print_message_to_chat, name='chat', kwargs={'from_': self.action},
                               daemon=True)
         chat_history.start()
+        
         while self.is_connected:
-            # with lock:
-            contact = self.chat.get(to, None)
+
             text = input()
             if text == '/exit':
                 self.action = None
@@ -155,68 +165,70 @@ class TCPSocketClient(BaseTCPSocket):
                 break
             elif not len(text) or len(text) > 300:
                 continue
+            self.lock.acquire()
             message = Message(to=to, from_=self.user.account_name, message=text)
             request = Request(action=Action.msg, time=datetime.now().isoformat(), user=self.user, data=message)
             self.outbox.put(request)
-            if contact:
-                contact['was_read'].append(request)
-            else:
-                self.chat[to] = {}
-                self.chat[to]['was_read'] = [request]
+            contact['was_read'].append(request)
+            self.to_print = True
+            self.lock.release()
+        chat_history.join()
     
     @log
     def get_message_from_queue(self):
         """Get message from inbox queue and put it to chat dictionary sort by 'from' username"""
-        lock = Lock()
+
+        new: Request
+
         while self.is_connected:
-            # with lock:
-            new: Request
+            if self.inbox.empty():
+                continue
+            self.lock.acquire()
             new = self.inbox.get(block=True)
             user = new.data.from_
-            contact = self.chat.get(user, None)
-            if contact:
-                contact['new'].put(new)
-            else:
-                self.chat[user] = {}
-                self.chat[user]['new'] = Queue()
-                self.chat[user]['new'].put(new)
-                self.chat[user]['was_read'] = []
+            contact = self.get_contact(user)
+            contact['new'].put(new)
+            self.to_print = True
+            self.lock.release()
     
     @log
     def print_message_to_chat(self, from_: str):
-        lock = Lock()
-        contact = self.chat.get(from_, None)
-        if not contact:
-            self.chat[from_] = {}
-            self.chat[from_]['new'] = Queue()
-            self.chat[from_]['was_read'] = []
-            contact = self.chat[from_]
+    
         mess: Request
         new_mess: Request
-        # os.system('clear')
+        
+        contact = self.get_contact(from_)
+
         for mess in contact['was_read']:
             print(f"{mess.time} {mess.data.from_}: {mess.data.message}")
         while not self.chat_stop:
+            
             while not contact['new'].empty():
-                # with lock:
-                new_mess = contact['new'].get()
-                print(f"{new_mess.time} {from_}: {new_mess.data.message}")
-                contact['was_read'].append(new_mess)
+                with self.lock:
+                    new_mess = contact['new'].get(block=True)
+                    print(f"{new_mess.time} {from_}: {new_mess.data.message}")
+                    contact['was_read'].append(new_mess)
+                    self.to_print = True
     
     @log
     def print_menu(self):
-        # lock = Lock()
-        # while not self.action:
-        #     with lock:
-        os.system('clear')
-        rows = ''
-        for username, contact in self.chat.items():
-            row = f"{username} ({len(contact['new'])})"
-            rows += row + '\n'
-        menu = f"{rows}\ninput username for chat with (if user not in list - will start new one)" \
-               f"\ntype < /exit > for Exit\n"
-        print(menu)
-        # sleep(5)
+        
+        while not self.action:
+            if self.to_print:
+                self.lock.acquire()
+                rows = ''
+                for username, contact in self.chat.items():
+                    new_mess = contact['new'].qsize()
+                    row = f"{username} ({new_mess})"
+                    rows += row + '\n'
+                if rows == '':
+                    rows = 'No active chats\n'
+                menu = f"{rows}\ninput username for chat with (if user not in list - will start new one)" \
+                       f"\ntype < /exit > for Exit\n"
+                os.system('clear')
+                print(menu)
+                self.to_print = False
+                self.lock.release()
     
     @log
     def request(self, action):
@@ -234,22 +246,19 @@ class TCPSocketClient(BaseTCPSocket):
         receive = Thread(target=self.receive_message, name='receive', daemon=True)
         check_inbox = Thread(target=self.get_message_from_queue, name='check_inbox', daemon=True)
         send.start()
-        sleep(0.1)
+        # sleep(0.3)
         receive.start()
-        sleep(0.1)
+        # sleep(0.3)
         check_inbox.start()
-        sleep(0.1)
-        # menu = Thread(target=self.print_menu, name='menu', daemon=True)
+
         while True:
-            # menu.start()
-            self.print_menu()
+            menu = Thread(target=self.print_menu, name='menu', daemon=True)
+            menu.start()
             self.action = input()
             if self.action == "/exit":
                 break
-            
             self.get_outbox_message(to=self.action)
-            # write_mess = Thread(target=self.get_outbox_message, name='write', kwargs={'to': self.action}, daemon=True)
-            # write_mess.start()
+            menu.join()
    
             
 @log
@@ -276,28 +285,10 @@ def main():
                 client.connect()
                 if client.is_connected:
                     try:
-                        # action = 0
-                        # while action not in ('1', '2'):
-                        #     os.system('clear')
-                        #     action = input('1. send\n2. receive\n')
-                        # os.system('clear')
-                        # action = int(action)
-                        # if action == 1:
-                        #     print(f'Sending messages, user:  {username}')
-                        #     mode = Action.msg
-                        # else:
-                        #     print(f"Receiving messages, user: {username}")
-                        #     mode = Action.recv
-                        # while client.is_connected:
-                        #     try:
-                        #         client.request(mode)
-                        #     except StopSendingError:
-                        #         break
                         client.run()
                         print('Disconnected from server (press <Enter> to continue)')
                         input()
                     except KeyboardInterrupt:
-                        client.request(Action.quit)
                         client.shutdown()
                         exit(1)
                 else:

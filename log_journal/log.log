@@ -1,8 +1,0 @@
-2022-06-07 00:16:31,909 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/base.py> <handler.handle_request()>: 1 validation error for Request __root__ Extra data: line 1 column 127 (char 126) (type=value_error.jsondecode; msg=Extra data; doc={"action": "quit", "time": "2022-06-07T00:16:31.908487", "user": {"account_name": "val", "password": "s", "status": "online"}}{"action": "quit", "time": "2022-06-07T00:16:31.908787", "user": {"account_name": "val", "password": "s", "status": "online"}}; pos=126; lineno=1; colno=127)
-2022-06-07 00:16:31,910 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/server.py> <self.close_request()>: 'NoneType' object has no attribute 'user'
-2022-06-07 00:16:31,910 ERROR: </home/stanislav/study/client_server_app/client-server-applcations/server.py> <server.serve()>: file descriptor cannot be a negative integer (-1)
-2022-06-07 00:18:16,912 ERROR: <client.py> <self.print_menu()>: object of type 'Queue' has no len()
-2022-06-07 00:19:11,730 ERROR: <client.py> <self.print_menu()>: object of type 'Queue' has no len()
-2022-06-07 00:19:40,566 ERROR: <client.py> <self.print_menu()>: object of type 'Queue' has no len()
-2022-06-07 00:19:51,793 ERROR: <client.py> <self.print_menu()>: object of type 'Queue' has no len()
-2022-06-07 00:20:07,913 ERROR: <client.py> <self.print_menu()>: object of type 'Queue' has no len()
