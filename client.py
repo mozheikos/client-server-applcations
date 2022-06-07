@@ -6,7 +6,7 @@ from time import sleep
 from threading import Thread, Lock
 
 from base import BaseTCPSocket
-from common.config import Action, DEFAULT_ENCODING, Status, StopSendingError
+from common.config import Action, DEFAULT_ENCODING, Status
 from common.utils import get_cmd_arguments
 from decorators import log
 from templates.templates import Request, User, Response, Message
@@ -25,6 +25,7 @@ class TCPSocketClient(BaseTCPSocket):
     chat = {}
     lock = Lock()
     to_print = True
+    notify = (False, '')
     
     @log
     def __init__(
@@ -51,7 +52,7 @@ class TCPSocketClient(BaseTCPSocket):
     
     def shutdown(self):
         self.quit()
-        super(TCPSocketClient, self).shutdown()
+        self.connection.close()
     
     @log
     def connect(self):
@@ -144,6 +145,13 @@ class TCPSocketClient(BaseTCPSocket):
                 self.is_connected = False
     
     @log
+    def notification(self):
+        if self.notify[0] and self.notify[1].endswith("not connected"):
+            print(self.notify[1])
+        elif self.action and self.notify[0] and self.action != self.notify[1]:
+            print(f'New message from {self.notify[1]}')
+    
+    @log
     def get_outbox_message(self, to: str):
         """Get message from user and put it to queue for send"""
         
@@ -185,10 +193,20 @@ class TCPSocketClient(BaseTCPSocket):
                 continue
             self.lock.acquire()
             new = self.inbox.get(block=True)
+            if isinstance(new.data, str):
+                self.to_print = True
+                data = new.data.replace('User ', '').replace(' not connected', '')
+                self.notify = (True, new.data)
+                self.chat.pop(data)
+                self.notification()
+                self.lock.release()
+                continue
             user = new.data.from_
             contact = self.get_contact(user)
             contact['new'].put(new)
             self.to_print = True
+            self.notify = (True, user)
+            self.notification()
             self.lock.release()
     
     @log
@@ -246,9 +264,9 @@ class TCPSocketClient(BaseTCPSocket):
         receive = Thread(target=self.receive_message, name='receive', daemon=True)
         check_inbox = Thread(target=self.get_message_from_queue, name='check_inbox', daemon=True)
         send.start()
-        # sleep(0.3)
+        sleep(0.3)
         receive.start()
-        # sleep(0.3)
+        sleep(0.3)
         check_inbox.start()
 
         while True:

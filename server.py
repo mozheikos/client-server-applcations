@@ -5,10 +5,10 @@ from pydantic import ValidationError
 import sys
 from typing import Union, List
 import json
-from common.config import Status, DEFAULT_ENCODING
+from common.config import Status, DEFAULT_ENCODING, Action
 from common.utils import get_cmd_arguments
 from decorators import log
-from templates.templates import Response, Request, Client
+from templates.templates import Response, Request, Client, Message
 from base import TCPSocketServer
 
 
@@ -68,15 +68,25 @@ class RequestHandler:
         
         self.send_response(status=Status.ok, alert='Success')
     
+    @log
     def handle_message(self):
         to_send: Client
         print(self.message.user.account_name, self.message.data.message)
         recipient = self.message.data.to
         to_send = self.server.connected_users.get(recipient, None)
-        for sock in to_send.sock:
-            if sock in self.clients:
-                sock.send(self.message.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
+        if to_send:
+            for sock in to_send.sock:
+                if sock in self.clients:
+                    sock.send(self.message.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
+        else:
+            response = Request(
+                action=Action.msg,
+                time=datetime.now().isoformat(),
+                data=f"User {recipient} not connected"
+            )
+            self.request.send(response.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
     
+    @log
     def handle_error(self, error: Union[ValidationError, AssertionError, ConnectionError]):
         msg = ''
         if isinstance(error, ValidationError):
