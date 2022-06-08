@@ -1,7 +1,7 @@
 import datetime
 from select import select
 from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM, SHUT_RDWR
-from typing import List, Any
+from typing import List
 
 from common.config import HOST, PORT, BUFFER_SIZE, Action, DEFAULT_ENCODING
 from templates.templates import Request
@@ -56,6 +56,7 @@ class TCPSocketServer(BaseTCPSocket):
     pool_size: int = 5
     request_handler = None
     connected = []
+    connected_users = {}
     
     @log
     def __init__(
@@ -106,6 +107,7 @@ class TCPSocketServer(BaseTCPSocket):
     
     @log
     def serve(self):
+        write = []
         while True:
             try:
                 write: List[socket]

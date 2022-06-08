@@ -12,6 +12,7 @@ class Status(str, Enum):
     bad_request = '400 Bad Request'
     forbidden = '403 Forbidden'
     unauthorized = '401 Unauthorized'
+    not_found = '404 Not Found'
 
 
 class Action(str, Enum):
@@ -25,7 +26,3 @@ class Action(str, Enum):
     msg = 'msg'
     recv = 'recv'
     server_shutdown = 'server_shutdown'
-
-
-class StopSendingError(Exception):
-    pass
