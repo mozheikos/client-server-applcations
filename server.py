@@ -1,15 +1,17 @@
-from collections import deque
-from socket import socket
-from datetime import datetime
-from pydantic import ValidationError
-import sys
-from typing import Union, List
 import json
+import sys
+from collections import deque
+from datetime import datetime
+from socket import socket
+from typing import Union, List
+
+from pydantic import ValidationError
+
+from base import TCPSocketServer
 from common.config import Status, DEFAULT_ENCODING, Action
 from common.utils import get_cmd_arguments
 from decorators import log
-from templates.templates import Response, Request, Client, Message
-from base import TCPSocketServer
+from templates.templates import Response, Request, Client
 
 
 class RequestHandler:
@@ -71,13 +73,15 @@ class RequestHandler:
     @log
     def handle_message(self):
         to_send: Client
-        print(self.message.user.account_name, self.message.data.message)
+        
         recipient = self.message.data.to
         to_send = self.server.connected_users.get(recipient, None)
+        
         if to_send:
             for sock in to_send.sock:
                 if sock in self.clients:
                     sock.send(self.message.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
+                    
         else:
             response = Request(
                 action=Action.msg,

@@ -107,6 +107,7 @@ class TCPSocketServer(BaseTCPSocket):
     
     @log
     def serve(self):
+        write = []
         while True:
             try:
                 write: List[socket]
@@ -129,7 +130,7 @@ class TCPSocketServer(BaseTCPSocket):
                         time=datetime.datetime.now().isoformat()
                     )
                     try:
-                        # sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
+                        sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
                         sock.close()
                     except OSError:
                         continue

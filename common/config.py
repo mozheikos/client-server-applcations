@@ -26,7 +26,3 @@ class Action(str, Enum):
     msg = 'msg'
     recv = 'recv'
     server_shutdown = 'server_shutdown'
-
-
-class StopSendingError(Exception):
-    pass

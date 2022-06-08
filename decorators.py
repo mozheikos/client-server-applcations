@@ -1,8 +1,8 @@
 import traceback
 
 import pydantic
+
 from log.logger import logger
-from common.config import StopSendingError
 
 
 def log(func):
@@ -29,11 +29,6 @@ def log(func):
             e = ' '.join(list(map(lambda x: x.strip(), str(e).split('\n'))))
             logger.error("<{}> <{}>: {}".format(file_name.replace('File ', '').strip('"'), exec_func.strip(), e))
             return
-        
-        # Таким методом решил выходить из цикла отправки сообщений. Кастомная ошибка, возбуждаю, если пользователь
-        # вводит команду на выход (/exit)
-        except StopSendingError:
-            raise
         
         except Exception as e:
             logger.error("<{}> <{}>: {}".format(file_name.replace('File ', '').strip('"'), exec_func.strip(), e))    
