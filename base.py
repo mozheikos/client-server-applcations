@@ -102,6 +102,7 @@ class TCPSocketServer(BaseTCPSocket):
     pool_size: int = 5
     request_handler = None
     connected = []
+    connected_users = {}
 
     @log
     def __init__(
