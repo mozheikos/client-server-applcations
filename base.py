@@ -1,20 +1,66 @@
 import datetime
+import dis
 from select import select
 from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM, SHUT_RDWR
-from typing import List, Any
+from typing import List
 
 from common.config import HOST, PORT, BUFFER_SIZE, Action, DEFAULT_ENCODING
-from templates.templates import Request
 from decorators import log
+from templates.templates import Request
+
 """Решил что вот так будет совсем красиво. Сервер и клиент изначально представляют собой одно и то же - сокет, поэтому
 часть параметров у них общая и часть методов класса соответственно тоже (создание объекта сокета, установка некоторых
 параметров. Поэтому все общее я решил вынести в базовый класс"""
 
 
-class BaseTCPSocket:
+class PortNumber:
+
+    def __set_name__(self, owner, name):
+        self.name = name
+
+    def __set__(self, instance, value):
+        if value is None:
+            value = PORT
+        else:
+            if not isinstance(value, int) or value < 0:
+                raise ValueError('Номер порта должен быть целым неотрицательным числом')
+        instance.__dict__[self.name] = value
+
+
+class Verifier(type):
+    """Вследствие особенностей архитектуры конкретно моей версии программы метакласс для проверки решил сделать один"""
+    @staticmethod
+    def _verify(cls, clsname, clsdict):
+
+        if clsname == 'BaseTCPSocket':
+            assert cls.address_family == AF_INET and cls.socket_type == SOCK_STREAM, "Использование не TCP-сокета"
+
+        if clsname in ('TCPSocketServer', 'TCPSocketClient'):
+            methods = set()
+            for name, item in clsdict.items():
+                if callable(item):
+                    for m in dis.get_instructions(item):
+                        if m.opname == 'LOAD_METHOD':
+                            methods.add(m.argval)
+            
+            if clsname == 'TCPSocketClient':
+                assert 'accept' not in methods and 'listen' not in methods, \
+                    "В серверном классе не должно быть методов 'accept', 'listen'"
+            else:
+                assert 'connect' not in methods, "В серверном классе не должно быть метода 'connect'"
+    
+    def _client_verify(self, cls, clsname, clsdict):
+        pass
+    
+    def __init__(cls, clsname, bases, clsdict):
+        cls._verify(cls, clsname, clsdict)
+        super().__init__(clsname, bases, clsdict)
+
+
+class BaseTCPSocket(metaclass=Verifier):
 
     host: str = HOST
-    port: int = PORT
+    port: PortNumber()
     
     address_family: AddressFamily = AF_INET
     socket_type: SocketKind = SOCK_STREAM
@@ -56,7 +102,7 @@ class TCPSocketServer(BaseTCPSocket):
     pool_size: int = 5
     request_handler = None
     connected = []
-    
+
     @log
     def __init__(
             self,
@@ -85,8 +131,7 @@ class TCPSocketServer(BaseTCPSocket):
         
         if bind_and_listen:
             self.bind_and_listen()
-    
-    @log
+
     def bind_and_listen(self) -> None:
         """
             Initialize server socket. Calls on initialization of class automatically.
@@ -103,7 +148,7 @@ class TCPSocketServer(BaseTCPSocket):
         client, address = self.connection.accept()
         self.connected.append(client)
         print(f"{address[0]} connected")
-    
+
     @log
     def serve(self):
         while True:
@@ -135,9 +180,8 @@ class TCPSocketServer(BaseTCPSocket):
                 self.connection.shutdown(SHUT_RDWR)
                 self.shutdown()
                 break
-            
+
     @log
     def handle_request(self, client, writable):
         handler = self.request_handler(client, self, writable)
         handler.handle_request()
-        
