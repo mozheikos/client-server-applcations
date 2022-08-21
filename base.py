@@ -3,9 +3,11 @@ from select import select
 from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM, SHUT_RDWR
 from typing import List
 
-from common.config import HOST, PORT, BUFFER_SIZE, Action, DEFAULT_ENCODING
-from templates.templates import Request
+from common.config import settings
+from databases import ServerDatabase
 from decorators import log
+from templates.templates import Request
+
 """Решил что вот так будет совсем красиво. Сервер и клиент изначально представляют собой одно и то же - сокет, поэтому
 часть параметров у них общая и часть методов класса соответственно тоже (создание объекта сокета, установка некоторых
 параметров. Поэтому все общее я решил вынести в базовый класс"""
@@ -13,13 +15,13 @@ from decorators import log
 
 class BaseTCPSocket:
 
-    host: str = HOST
-    port: int = PORT
+    host: str = settings.HOST
+    port: int = settings.PORT
     
     address_family: AddressFamily = AF_INET
     socket_type: SocketKind = SOCK_STREAM
     
-    buffer_size: int = BUFFER_SIZE
+    buffer_size: int = settings.BUFFER_SIZE
     
     connection: socket = None
     
@@ -57,7 +59,7 @@ class TCPSocketServer(BaseTCPSocket):
     request_handler = None
     connected = []
     connected_users = {}
-    
+
     @log
     def __init__(
             self,
@@ -79,7 +81,8 @@ class TCPSocketServer(BaseTCPSocket):
         super(TCPSocketServer, self).__init__(host, port, buffer)
         
         self.request_handler = handler
-        
+        self.database = ServerDatabase()
+
         if pool_size:
             assert isinstance(pool_size, int), "Variable 'pool_size' must be int"
             self.pool_size = pool_size
@@ -126,11 +129,11 @@ class TCPSocketServer(BaseTCPSocket):
                     if sock is self.connection:
                         continue
                     request = Request(
-                        action=Action.server_shutdown,
-                        time=datetime.datetime.now().isoformat()
+                        action=settings.Action.server_shutdown,
+                        time=datetime.datetime.now().strftime(settings.DATE_FORMAT)
                     )
                     try:
-                        sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
+                        sock.send(request.json(exclude_none=True).encode(settings.DEFAULT_ENCODING))
                         sock.close()
                     except OSError:
                         continue
@@ -140,6 +143,5 @@ class TCPSocketServer(BaseTCPSocket):
             
     @log
     def handle_request(self, client, writable):
-        handler = self.request_handler(client, self, writable)
+        handler = self.request_handler(client, self, writable, self.database)
         handler.handle_request()
-        

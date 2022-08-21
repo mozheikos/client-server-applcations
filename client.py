@@ -4,9 +4,10 @@ from datetime import datetime
 from queue import Queue
 from threading import Thread, Lock
 from time import sleep
+from typing import Tuple
 
 from base import BaseTCPSocket
-from common.config import Action, DEFAULT_ENCODING, Status
+from common.config import settings
 from common.utils import get_cmd_arguments
 from decorators import log
 from templates.templates import Request, User, Response, Message
@@ -33,23 +34,45 @@ class TCPSocketClient(BaseTCPSocket):
             host: str = None,
             port: int = None,
             buffer: int = None,
-            username: str = None,
-            password: str = None,
             connect: bool = False
     ):
-        assert username, "username is required"
-        assert password, 'password is required'
         
         super(TCPSocketClient, self).__init__(host, port, buffer)
-        
-        self.user = User(
-            account_name=username,
-            password=password,
-            status='online'
-        )
+
         if connect:
             self.connect()
-    
+
+    def auth(self, action: settings.Action) -> Tuple[str, str]:
+
+        os.system('clear')
+        login = input('login: ')
+        passwd = input('password: ')
+        request = Request(
+            action=action,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=User(
+                login=login,
+                password=passwd
+            )
+        )
+        self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        received = self.connection.recv(self.buffer_size)
+        print(received)
+        assert received, 'No data received'
+
+        result = Response.parse_raw(received)
+        if result.response == settings.Status.ok:
+            self.user = User(
+                id=result.alert,
+                login=login,
+                password=passwd,
+                verbose_name=f'@{login}'
+            )
+            return 'success', ''
+        print(result.alert)
+        user_action = input('1.login\n2. register\nInput option or "exit" for quit: ')
+        return result.alert, user_action
+
     def shutdown(self):
         self.quit()
         self.connection.close()
@@ -64,29 +87,27 @@ class TCPSocketClient(BaseTCPSocket):
             self.is_connected = True
             self.send_presence()
             if self.receive():
-                print(f'Connected {self.user.account_name}')
+                print(f'Connected')
             else:
                 self.is_connected = False
 
     @log
     def receive(self):
+
         received = self.connection.recv(self.buffer_size)
-    
         assert received, 'No data received'
-        response = Response.parse_raw(received)
-        if response.response == Status.ok:
-            return True
-        return False
+
+        return Response.parse_raw(received).response == settings.Status.ok
 
     @log
     def quit(self):
         request = Request(
-            action=Action.quit,
-            time=datetime.now().isoformat(),
-            user=self.user
+            action=settings.Action.quit,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user if hasattr(self, 'user') else None
         )
         self.connection.send(
-            request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
+            request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
         )
         self.is_connected = False
 
@@ -94,11 +115,10 @@ class TCPSocketClient(BaseTCPSocket):
     def send_presence(self):
     
         request = Request(
-            action=Action.presence,
-            time=datetime.now().isoformat(),
-            user=self.user
+            action=settings.Action.presence,
+            time=datetime.now().strftime(settings.DATE_FORMAT)
         )
-        request = request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING)
+        request = request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
         self.send_request(request)
 
     @log
@@ -126,15 +146,15 @@ class TCPSocketClient(BaseTCPSocket):
     @log
     def receive_message(self):
         """Put new inbox message to queue"""
-        
+
         while self.is_connected:
             data = self.connection.recv(self.buffer_size)
             
             if data:
                 message = Request.parse_raw(data)
-                if message.action == Action.msg:
+                if message.action == settings.Action.msg:
                     self.inbox.put(message)
-                elif message.action == Action.server_shutdown:
+                elif message.action == settings.Action.server_shutdown:
                     self.is_connected = False
                     
             else:
@@ -143,11 +163,12 @@ class TCPSocketClient(BaseTCPSocket):
     @log
     def send_message(self):
         """Get outbox message from queue and send it to server"""
-        
+
         while self.is_connected:
             
             request = self.outbox.get(block=True)
-            result = self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(DEFAULT_ENCODING))
+            result = self.send_request(
+                request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
             if not result:
                 self.is_connected = False
     
@@ -189,8 +210,13 @@ class TCPSocketClient(BaseTCPSocket):
                 
                 self.lock.acquire()
                 
-                message = Message(to=to, from_=self.user.account_name, message=text)
-                request = Request(action=Action.msg, time=datetime.now().isoformat(), user=self.user, data=message)
+                message = Message(to=to, from_=self.user.login, message=text)
+                request = Request(
+                    action=settings.Action.msg,
+                    time=datetime.now().strftime(settings.DATE_FORMAT),
+                    user=self.user,
+                    data=message
+                )
                 self.outbox.put(request)
                 contact['was_read'].append(request)
                 self.to_print = True
@@ -235,7 +261,7 @@ class TCPSocketClient(BaseTCPSocket):
         """When in chat - prints all new messages and transfer it to 'was read' list"""
         mess: Request
         new_mess: Request
-        
+
         contact = self.get_contact(from_)
         
         for mess in contact['was_read']:
@@ -305,7 +331,7 @@ def main():
         option = 0
         while option not in ('1', '2'):
             os.system('clear')
-            option = input('1. Login\n2. Quit\nInput option: ')
+            option = input('1. Login/Register\n2. Quit\nInput option: ')
         option = int(option)
         
         if option == 2:
@@ -317,13 +343,26 @@ def main():
             
         elif option == 1:
             os.system('clear')
-            print('Input your username and password:')
-            username = input("username: ")
-            password = input("password: ")
-            with TCPSocketClient(host=cl_host, port=cl_port, username=username, password=password) as client:
+            action = input('1. Login\n2. Register\nInput option: ')
+
+            with TCPSocketClient(host=cl_host, port=cl_port) as client:
                 os.system('clear')
                 client.connect()
                 if client.is_connected:
+                    result = ''
+                    while result != 'success' and result != 'exit':
+
+                        if action == '1':
+                            result, action = client.auth(settings.Action.auth)
+                        elif action == '2':
+                            result, action = client.auth(settings.Action.register)
+                    if result == 'exit':
+                        for i in range(1, 6, 1):
+                            print(f'\rExiting{"." * i}', end='')
+                            sleep(0.7)
+                        print()
+                        exit(0)
+
                     try:
                         client.run()
                         print('Disconnected from server (press <Enter> to continue)')

@@ -1,10 +1,15 @@
-from common.config import HOST, PORT
+from common.config import settings
+import hashlib
+
+
+def get_hashed_password(password: str) -> str:
+    return hashlib.sha256(password.encode()).hexdigest()
 
 
 def get_cmd_arguments(cmd_line_args: list) -> tuple:
     arguments = {
-        '-h': HOST,
-        '-p': PORT
+        '-h': settings.HOST,
+        '-p': settings.PORT
     }
 
     # Получаем именованные параметры командной строки, присваиваем соответствующим значениям arguments

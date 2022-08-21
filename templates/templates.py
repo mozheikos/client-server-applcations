@@ -3,7 +3,7 @@ from socket import socket
 
 from pydantic import BaseModel
 
-from common.config import Action, Status
+from common.config import settings
 
 
 class Base(BaseModel):
@@ -20,16 +20,19 @@ class Message(Base):
     from_: str
     encoding: str = 'utf-8'
     message: str
+    date: Optional[str]
 
 
 class User(Base):
-    account_name: str
+    id: Optional[int]
+    login: str
     password: Optional[str]
+    verbose_name: Optional[str]
     status: Optional[str]
 
 
 class Request(Base):
-    action: Action
+    action: settings.Action
     time: str
     type: Optional[str]
     user: Optional[User]
@@ -37,15 +40,16 @@ class Request(Base):
 
 
 class Response(Base):
-    response: Status
+    response: settings.Status
+    action: settings.Action
     time: str
-    alert: Optional[str]
+    alert: Optional[Union[int, str]]
 
 
 # Пользовательский сокет сохраняю в виде списка, чтобы (ТЕОРЕТИЧЕСКИ) можно было подключиться с 2 устройств к одному
 # аккаунту (пока пароль проверять не буду, но будет база - по паролю и будем решать: добавлять новый сокет в список или
 # это нарушитель
-class Client(Base):
+class ConnectedUser(Base):
     user: User
     sock: List[socket]
     data: Deque[Union[str, Request]]

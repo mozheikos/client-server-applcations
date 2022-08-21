@@ -1,0 +1,11 @@
+{
+    "default": {
+        "dialect": "sqlite",
+        "driver": "pysqlite",
+        "user": "",
+        "password": "",
+        "host": "",
+        "port": "",
+        "name": "database.sqlite3"
+    }
+}
