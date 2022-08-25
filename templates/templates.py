@@ -28,22 +28,22 @@ class User(Base):
     login: str
     password: Optional[str]
     verbose_name: Optional[str]
-    status: Optional[str]
-
-
-class Request(Base):
-    action: settings.Action
-    time: str
-    type: Optional[str]
-    user: Optional[User]
-    data: Optional[Union[str, Message]]
 
 
 class Response(Base):
     response: settings.Status
+    # action: settings.Action
+    # time: str
+    alert: Optional[Union[int, str]]
+
+
+class Request(Base):
+    status: Optional[settings.Status]
     action: settings.Action
     time: str
-    alert: Optional[Union[int, str]]
+    type: Optional[str]
+    user: Optional[User]
+    data: Optional[Union[Message, User, str, List[User]]]
 
 
 # Пользовательский сокет сохраняю в виде списка, чтобы (ТЕОРЕТИЧЕСКИ) можно было подключиться с 2 устройств к одному

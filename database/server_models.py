@@ -2,9 +2,9 @@ import sqlalchemy.exc
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 
-from database.core import Base
+Base = declarative_base()
 
 
 class Client(Base):
@@ -22,18 +22,6 @@ class Client(Base):
         uselist=True
     )
 
-    # sent_messages = relationship(
-    #     'MessageHistory',
-    #     back_populates='sender',
-    #     uselist=True
-    # )
-    #
-    # received_messages = relationship(
-    #     'MessageHistory',
-    #     back_populates='recipient',
-    #     uselist=True
-    # )
-
 
 class ClientHistory(Base):
     __tablename__ = 'clients_history'
@@ -46,6 +34,26 @@ class ClientHistory(Base):
     client = relationship(
         Client,
         back_populates='connect_history',
+        uselist=False
+    )
+
+
+class Chat(Base):
+    __tablename__ = 'chats'
+
+    id = Column(INTEGER, primary_key=True)
+    init_id = Column(INTEGER, ForeignKey('clients.id', ondelete='CASCADE'), nullable=False)
+    other_id = Column(INTEGER, ForeignKey('clients.id', ondelete='CASCADE'), nullable=False)
+
+    init = relationship(
+        Client,
+        foreign_keys=[init_id],
+        uselist=False
+    )
+
+    other = relationship(
+        Client,
+        foreign_keys=[other_id],
         uselist=False
     )
 

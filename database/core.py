@@ -5,11 +5,8 @@ from typing import Optional
 from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import declarative_base
 
 from common.config import settings
-
-Base = declarative_base()
 
 
 class DatabaseFactory:
@@ -30,8 +27,11 @@ class DatabaseFactory:
             else:
                 return f'{self.dialect}+{self.driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}'
 
-    def __init__(self):
+    def __init__(self, classname: str):
         self.__name = settings.DATABASE
+        self.kind = classname
+        if self.kind == 'ClientDatabase':
+            self.__name = 'client'
         self.__get_db_creds()
 
     def __get_db_creds(self):
@@ -42,11 +42,13 @@ class DatabaseFactory:
         path = Path(__file__).resolve().parent
         with open(f'{path}/config.json', 'r', encoding='utf-8') as f:
             databases = json.load(f)
-        self.__creds = self.Database.parse_obj(databases[self.__name])
+        self.__creds = self.Database.parse_obj(databases[self.kind][self.__name])
 
     def get_engine(self) -> Engine:
         """
         takes engine source from {__creds} and creates SQLAlchemy Engine object
         :return: Engine
         """
+        if self.__creds.dialect == 'sqlite':
+            return create_engine(self.__creds.get_src(), connect_args={"check_same_thread": False})
         return create_engine(self.__creds.get_src())

@@ -68,7 +68,7 @@ class TCPSocketServer(BaseTCPSocket):
             port: int = None,
             buffer: int = None,
             pool_size: int = None,
-            bind_and_listen: bool = True
+            bind_and_listen: bool = True,
     ):
         """Initialize server class
 
@@ -79,7 +79,8 @@ class TCPSocketServer(BaseTCPSocket):
             pool_size (int): listening queue size
         """
         super(TCPSocketServer, self).__init__(host, port, buffer)
-        
+
+        self.gui = None
         self.request_handler = handler
         self.database = ServerDatabase()
 
@@ -110,6 +111,7 @@ class TCPSocketServer(BaseTCPSocket):
     
     @log
     def serve(self):
+        print('serving...')
         write = []
         while True:
             try:

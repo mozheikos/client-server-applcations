@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from datetime import datetime
@@ -9,7 +10,9 @@ from typing import Tuple
 from base import BaseTCPSocket
 from common.config import settings
 from common.utils import get_cmd_arguments
+from databases import ClientDatabase
 from decorators import log
+from exceptions import AlreadyExist
 from templates.templates import Request, User, Response, Message
 
 
@@ -38,7 +41,7 @@ class TCPSocketClient(BaseTCPSocket):
     ):
         
         super(TCPSocketClient, self).__init__(host, port, buffer)
-
+        self.db = ClientDatabase()
         if connect:
             self.connect()
 
@@ -57,21 +60,32 @@ class TCPSocketClient(BaseTCPSocket):
         )
         self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
         received = self.connection.recv(self.buffer_size)
-        print(received)
+
         assert received, 'No data received'
 
-        result = Response.parse_raw(received)
-        if result.response == settings.Status.ok:
+        result = Request.parse_raw(received)
+        if result.status == settings.Status.ok:
             self.user = User(
-                id=result.alert,
+                id=result.data.id,
                 login=login,
                 password=passwd,
                 verbose_name=f'@{login}'
             )
+            self.get_contacts()
             return 'success', ''
-        print(result.alert)
+        print(result.data)
         user_action = input('1.login\n2. register\nInput option or "exit" for quit: ')
-        return result.alert, user_action
+        return result.data, user_action
+
+    def get_contacts(self):
+        request = Request(
+            action=settings.Action.contacts,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user
+        )
+        self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        response = Request.parse_raw(self.connection.recv(self.buffer_size))
+        self.db.save_contacts(response.data, self.user.login)
 
     def shutdown(self):
         self.quit()
@@ -91,13 +105,32 @@ class TCPSocketClient(BaseTCPSocket):
             else:
                 self.is_connected = False
 
+    def initialize(self):
+        contacts = self.db.get_contacts(owner=self.user.login)
+        messages = self.db.get_messages(owner=self.user.login)
+
+        for contact in contacts:
+            self.chat[contact.login] = {}
+            self.chat[contact.login]['new'] = Queue()
+            self.chat[contact.login]['was_read'] = [Request(
+                action=settings.Action.msg,
+                time=x.date.strftime(settings.DATE_FORMAT),
+                data=Message(
+                    to=x.contact.login if x.kind == 'outbox' else self.user.login,
+                    from_=x.contact.login if x.kind == 'inbox' else self.user.login,
+                    encoding='utf-8',
+                    message=x.text,
+                    date=x.date.strftime(settings.DATE_FORMAT),
+                ),
+            ) for x in messages if x.contact.login == contact.login]
+
     @log
     def receive(self):
 
         received = self.connection.recv(self.buffer_size)
         assert received, 'No data received'
 
-        return Response.parse_raw(received).response == settings.Status.ok
+        return Request.parse_raw(received).status == settings.Status.ok
 
     @log
     def quit(self):
@@ -129,20 +162,48 @@ class TCPSocketClient(BaseTCPSocket):
     @log
     def get_method(self, action):
         methods = {
-            'presence': self.send_presence,
-            'msg': self.send_message,
-            'recv': self.receive_message,
-            'quit': self.quit
+            settings.Action.presence: self.send_presence,
+            settings.Action.msg: self.send_message,
+            settings.Action.recv: self.receive_message,
+            settings.Action.quit: self.quit
         }
         return methods.get(action, None)
-    
+
+    def find_contact(self, login):
+        request = Request(
+            action=settings.Action.search,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user,
+            data=User(login=login)
+        )
+        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+
+    def receive_contact(self, result: Request):
+        if result.status == settings.Status.ok:
+            contact = result.data
+            try:
+                self.db.save_contact(contact, owner=self.user.login)
+            except AlreadyExist:
+                ...
+            if contact.login not in self.chat.keys():
+                self.chat[contact.login] = {}
+                self.chat[contact.login]['new'] = Queue()
+                self.chat[contact.login]['was_read'] = []
+        else:
+            print(f'{result.data} Press <Enter>')
+            input()
+        self.to_print = True
+
     def get_contact(self, key):
         if key not in self.chat.keys():
             self.chat[key] = {}
             self.chat[key]['new'] = Queue()
             self.chat[key]['was_read'] = []
         return self.chat.get(key, None)
-        
+
+    def save_message(self, request: Request, kind: str):
+        self.db.save_message(request, kind, self.user.login)
+
     @log
     def receive_message(self):
         """Put new inbox message to queue"""
@@ -153,9 +214,12 @@ class TCPSocketClient(BaseTCPSocket):
             if data:
                 message = Request.parse_raw(data)
                 if message.action == settings.Action.msg:
+                    self.save_message(message, 'inbox')
                     self.inbox.put(message)
                 elif message.action == settings.Action.server_shutdown:
                     self.is_connected = False
+                elif message.action == settings.Action.search:
+                    self.receive_contact(message)
                     
             else:
                 self.is_connected = False
@@ -169,6 +233,7 @@ class TCPSocketClient(BaseTCPSocket):
             request = self.outbox.get(block=True)
             result = self.send_request(
                 request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+            self.save_message(request, 'outbox')
             if not result:
                 self.is_connected = False
     
@@ -187,7 +252,7 @@ class TCPSocketClient(BaseTCPSocket):
         
         if self.is_connected:
             contact = self.get_contact(to)
-    
+
             os.system('clear')
             print(f'Chat with {to}. (input < /exit > for back to chat list)')
             self.chat_stop = False
@@ -204,12 +269,12 @@ class TCPSocketClient(BaseTCPSocket):
                     self.chat_stop = True
                     self.to_print = True
                     break
-                
+
                 elif not len(text) or len(text) > 300:
                     continue
                 
                 self.lock.acquire()
-                
+
                 message = Message(to=to, from_=self.user.login, message=text)
                 request = Request(
                     action=settings.Action.msg,
@@ -217,10 +282,11 @@ class TCPSocketClient(BaseTCPSocket):
                     user=self.user,
                     data=message
                 )
+                self.save_message(request, 'outbox')
                 self.outbox.put(request)
                 contact['was_read'].append(request)
                 self.to_print = True
-                
+
                 self.lock.release()
             
             chat_history.join()
@@ -294,7 +360,7 @@ class TCPSocketClient(BaseTCPSocket):
                     rows += row + '\n'
                 if rows == '':
                     rows = 'No active chats\n'
-                menu = f"{rows}\ninput username for chat with (if user not in list - will start new one)" \
+                menu = f"{rows}\ninput username for chat with or '/add' to find" \
                        f"\ntype < /exit > for Exit\n"
                 os.system('clear')
                 print(menu)
@@ -321,7 +387,12 @@ class TCPSocketClient(BaseTCPSocket):
             if self.action == "/exit":
                 self.is_connected = False
                 break
-            self.get_outbox_message(to=self.action)
+            elif self.action == '/add':
+                os.system('clear')
+                login = input('Input username:\n')
+                self.find_contact(login)
+            else:
+                self.get_outbox_message(to=self.action)
             menu.join()
    
             
@@ -345,9 +416,9 @@ def main():
             os.system('clear')
             action = input('1. Login\n2. Register\nInput option: ')
 
-            with TCPSocketClient(host=cl_host, port=cl_port) as client:
+            with TCPSocketClient(host=cl_host, port=cl_port, connect=True) as client:
                 os.system('clear')
-                client.connect()
+                # client.connect()
                 if client.is_connected:
                     result = ''
                     while result != 'success' and result != 'exit':
@@ -363,6 +434,7 @@ def main():
                         print()
                         exit(0)
 
+                    client.initialize()
                     try:
                         client.run()
                         print('Disconnected from server (press <Enter> to continue)')

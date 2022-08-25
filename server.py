@@ -1,5 +1,4 @@
 import json
-import sys
 from collections import deque
 from datetime import datetime
 from socket import socket
@@ -9,11 +8,12 @@ from pydantic import ValidationError
 
 from base import TCPSocketServer
 from common.config import settings
-from common.utils import get_cmd_arguments, get_hashed_password
+from common.utils import get_hashed_password
 from databases import ServerDatabase
 from decorators import log
-from exceptions import UserAlreadyExist
-from templates.templates import Response, Request, ConnectedUser
+from exceptions import AlreadyExist, NotExist
+from server_ui import Ui_MainWindow
+from templates.templates import Request, ConnectedUser, User, Message
 
 
 class RequestHandler:
@@ -25,6 +25,7 @@ class RequestHandler:
         self.server = server
         self.clients = clients
         self.db = database
+        self.gui: Optional[Ui_MainWindow] = None
 
     @log
     def get_method(self):
@@ -34,20 +35,34 @@ class RequestHandler:
             settings.Action.msg: self.__handle_message,
             settings.Action.quit: self.__handle_quit,
             settings.Action.register: self.__handle_register,
-            settings.Action.auth: self.__handle_auth
+            settings.Action.auth: self.__handle_auth,
+            settings.Action.contacts: self.__handle_contacts,
+            settings.Action.search: self.__search,
+            settings.Action.add_chat: self.__add_contact,
+            settings.Action.del_chat: self.__del_contact
         }
         return methods.get(self.message.action)
-    
+
+    def __handle_contacts(self):
+        user = self.message.user
+        contacts = [User(id=x.id, login=x.login, verbose_name=x.verbose_name)
+                    for x in self.db.get_user_contact_list(user)]
+        status = settings.Status.ok
+        action = settings.Action.contacts
+        alert = contacts
+        self.__send_response(status, alert, action)
+
     def __handle_quit(self):
         address, port = self.request.getpeername()
         print(f"User {address}:{port} disconnected")
+        self.server.gui.user_disconnected.emit((address, str(port)))
         self.__close_request()
 
     def __handle_register(self):
         """Регистрация нового пользователя"""
         try:
-            user = self.db.create_user(self.message.user, self.request.getpeername()[0])
-        except UserAlreadyExist:
+            self.db.create_user(self.message.user)
+        except AlreadyExist:
             status = settings.Status.unauthorized
             alert = f'User {self.message.user.login} already exist'
             self.__send_response(status, alert, settings.Action.register)
@@ -59,19 +74,62 @@ class RequestHandler:
             self.__handle_auth()
 
     @log
-    def __send_response(self, status: settings.Status, alert: str, action: settings.Action):
+    def __send_response(
+            self, status: settings.Status, alert: Union[Message, User, str, List[User]], action: settings.Action):
 
-        response = Response(
-            response=status,
+        response = Request(
+            status=status,
             action=action,
             time=datetime.now().strftime(settings.DATE_FORMAT),
-            alert=alert
+            type='response',
+            data=alert
         )
         
         self.request.send(response.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
-        print(f"Response {self.request.getpeername()[0]} - {response.response}")
+        print(f"Response {self.request.getpeername()[0]} - {response.status}")
+
+    def __search(self):
+        try:
+            response = self.db.search(self.message.data.login)
+            user = User(
+                id=response.id,
+                login=response.login,
+                verbose_name=response.verbose_name
+            )
+        except NotExist:
+            status = settings.Status.bad_request
+            action = settings.Action.search
+            alert = f"User {self.message.data} not exist"
+            self.__send_response(status, alert, action)
+        else:
+            status = settings.Status.ok
+            action = settings.Action.search
+            alert = user
+            self.__send_response(status, alert, action)
+
+    def __add_contact(self):
+        self.db.create_chat(self.message.user, self.message.data)
+        status = settings.Status.ok
+        action = settings.Action.add_chat
+        alert = 'Success'
+        self.__send_response(status, alert, action)
+
+    def __del_contact(self):
+        try:
+            self.db.delete_chat(self.message.user, self.message.data)
+            status = settings.Status.ok
+            alert = 'Success'
+        except NotExist as e:
+            status = settings.Status.bad_request
+            alert = e
+
+        action = settings.Action.del_chat
+        self.__send_response(status, alert, action)
 
     def __handle_presence(self):
+        ip = self.request.getpeername()
+        date = datetime.now().strftime(settings.DATE_FORMAT)
+        self.server.gui.user_connected.emit({'ip': ip[0], 'port': str(ip[1]), 'date': date})
         self.__send_response(settings.Status.ok, 'Success', settings.Action.presence)
 
     @log
@@ -84,6 +142,8 @@ class RequestHandler:
             alert = f'Wrong login and/or password'
 
         else:
+            self.db.auth_user(user, self.request.getpeername()[0])
+
             self.server.connected_users.setdefault(
                 self.message.user.login,
                 ConnectedUser(
@@ -93,13 +153,14 @@ class RequestHandler:
                 )
             ).sock.append(self.request)
             status = settings.Status.ok
-            alert = user.id
+            alert = User(id=user.id, login=user.login, verbose_name=user.verbose_name)
 
         self.__send_response(status=status, alert=alert, action=settings.Action.auth)
     
     @log
     def __handle_message(self):
-        print(self.message.data)
+        # ПЕРЕДЕЛАТЬ!!! С учетом хранения списка контактов на клиенте (можно отправлять сообщения по id)
+
         recipient = self.message.data.to
         to_send = self.server.connected_users.get(recipient, None)
 
@@ -164,15 +225,3 @@ class RequestHandler:
             if client:
                 client.sock.remove(self.request)
         self.server.connected.remove(self.request)
-
-
-@log
-def main():
-    with TCPSocketServer(handler=RequestHandler, host=srv_host, port=srv_port) as server:
-        print(f"Server now listen on {srv_host if srv_host else 'localhost'}:{srv_port}")
-        server.serve()
-
-
-if __name__ == '__main__':
-    srv_host, srv_port = get_cmd_arguments(cmd_line_args=sys.argv[1:])
-    main()

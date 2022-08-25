@@ -1,11 +1,33 @@
 {
-    "default": {
-        "dialect": "sqlite",
-        "driver": "pysqlite",
-        "user": "",
-        "password": "",
-        "host": "",
-        "port": "",
-        "name": "database.sqlite3"
+    "ServerDatabase": {
+        "default": {
+            "dialect": "sqlite",
+            "driver": "pysqlite",
+            "user": "",
+            "password": "",
+            "host": "",
+            "port": "",
+            "name": "database_server.sqlite3"
+        },
+        "postgresql": {
+            "dialect": "postgresql",
+            "driver": "pg8000",
+            "user": "parser",
+            "password": "parser",
+            "host": "localhost",
+            "port": "5432",
+            "name": "messenger"
+        }
+    },
+    "ClientDatabase": {
+        "client": {
+            "dialect": "sqlite",
+            "driver": "pysqlite",
+            "user": "",
+            "password": "",
+            "host": "",
+            "port": "",
+            "name": "database_client.sqlite3"
+        }
     }
 }
