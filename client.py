@@ -1,4 +1,4 @@
-import json
+import os
 import os
 import sys
 from datetime import datetime
@@ -13,7 +13,7 @@ from common.utils import get_cmd_arguments
 from databases import ClientDatabase
 from decorators import log
 from exceptions import AlreadyExist
-from templates.templates import Request, User, Response, Message
+from templates.templates import Request, User, Message
 
 
 class TCPSocketClient(BaseTCPSocket):
@@ -204,6 +204,14 @@ class TCPSocketClient(BaseTCPSocket):
     def save_message(self, request: Request, kind: str):
         self.db.save_message(request, kind, self.user.login)
 
+    def save_contact(self, request: Request):
+        contact = User(
+            id=request.user.id,
+            login=request.user.login,
+            verbose_name=request.user.verbose_name
+        )
+        self.db.save_contact(contact, self.user.login)
+
     @log
     def receive_message(self):
         """Put new inbox message to queue"""
@@ -214,6 +222,8 @@ class TCPSocketClient(BaseTCPSocket):
             if data:
                 message = Request.parse_raw(data)
                 if message.action == settings.Action.msg:
+                    if message.user.login not in self.chat.keys():
+                        self.save_contact(message)
                     self.save_message(message, 'inbox')
                     self.inbox.put(message)
                 elif message.action == settings.Action.server_shutdown:
@@ -282,7 +292,6 @@ class TCPSocketClient(BaseTCPSocket):
                     user=self.user,
                     data=message
                 )
-                self.save_message(request, 'outbox')
                 self.outbox.put(request)
                 contact['was_read'].append(request)
                 self.to_print = True
@@ -350,7 +359,7 @@ class TCPSocketClient(BaseTCPSocket):
         while not self.action and self.is_connected:
             
             if self.to_print:
-                
+
                 self.lock.acquire()
                 
                 rows = ''
@@ -391,6 +400,11 @@ class TCPSocketClient(BaseTCPSocket):
                 os.system('clear')
                 login = input('Input username:\n')
                 self.find_contact(login)
+                self.action = None
+            elif self.action not in self.chat.keys():
+                print(f"{self.action} not in contact list. Add first")
+                input('Press <Enter>')
+                self.action = None
             else:
                 self.get_outbox_message(to=self.action)
             menu.join()
