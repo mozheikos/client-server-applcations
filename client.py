@@ -1,11 +1,9 @@
 import os
-import os
 import sys
 from datetime import datetime
 from queue import Queue
 from threading import Thread, Lock
 from time import sleep
-from typing import Tuple
 
 from base import BaseTCPSocket
 from common.config import settings
@@ -19,7 +17,7 @@ from templates.templates import Request, User, Message
 class TCPSocketClient(BaseTCPSocket):
     
     user: User
-    
+    gui = None
     is_connected = False
     
     inbox = Queue()
@@ -42,56 +40,50 @@ class TCPSocketClient(BaseTCPSocket):
         
         super(TCPSocketClient, self).__init__(host, port, buffer)
         self.db = ClientDatabase()
+        self.initialized = False
         if connect:
             self.connect()
 
-    def auth(self, action: settings.Action) -> Tuple[str, str]:
+    def get_handler(self, action):
+        methods = {
+            settings.Action.presence: self._presence,
+            settings.Action.register: self._register,
+            settings.Action.auth: self._login,
+            settings.Action.contacts: self._get_contacts,
+            settings.Action.msg: self.send_message,
+            settings.Action.recv: self.receive_message,
+            settings.Action.quit: self.quit
+        }
+        return methods.get(action, None)
 
-        os.system('clear')
-        login = input('login: ')
-        passwd = input('password: ')
+    def receive(self):
+
+        while self.is_connected:
+
+            received = self.connection.recv(self.buffer_size)
+            assert received, 'No data received'
+
+            request = Request.parse_raw(received)
+
+            handler = self.get_handler(request.action)
+            assert handler, 'Action not allowed'
+
+            handler(request)
+
+    def quit(self):
         request = Request(
-            action=action,
+            action=settings.Action.quit,
             time=datetime.now().strftime(settings.DATE_FORMAT),
-            user=User(
-                login=login,
-                password=passwd
-            )
+            user=self.user if hasattr(self, 'user') else None
         )
-        self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
-        received = self.connection.recv(self.buffer_size)
 
-        assert received, 'No data received'
-
-        result = Request.parse_raw(received)
-        if result.status == settings.Status.ok:
-            self.user = User(
-                id=result.data.id,
-                login=login,
-                password=passwd,
-                verbose_name=f'@{login}'
-            )
-            self.get_contacts()
-            return 'success', ''
-        print(result.data)
-        user_action = input('1.login\n2. register\nInput option or "exit" for quit: ')
-        return result.data, user_action
-
-    def get_contacts(self):
-        request = Request(
-            action=settings.Action.contacts,
-            time=datetime.now().strftime(settings.DATE_FORMAT),
-            user=self.user
-        )
-        self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
-        response = Request.parse_raw(self.connection.recv(self.buffer_size))
-        self.db.save_contacts(response.data, self.user.login)
+        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.is_connected = False
 
     def shutdown(self):
-        self.quit()
+        # self.quit()
         self.connection.close()
-    
-    @log
+
     def connect(self):
         try:
             self.connection.connect((self.host, self.port))
@@ -99,75 +91,97 @@ class TCPSocketClient(BaseTCPSocket):
             raise e
         else:
             self.is_connected = True
-            self.send_presence()
-            if self.receive():
-                print(f'Connected')
-            else:
-                self.is_connected = False
+            self.presence()
+
+    def presence(self):
+
+        request = Request(
+            action=settings.Action.presence,
+            time=datetime.now().strftime(settings.DATE_FORMAT)
+        )
+        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+
+    def _presence(self, request: Request):
+        if request.status == settings.Status.ok:
+            self.gui.connected.emit()
+        else:
+            self.quit()
+            self.shutdown()
+            self.is_connected = False
+
+    def register(self, login: str, password: str):
+
+        request = Request(
+            action=settings.Action.register,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=User(
+                login=login,
+                password=password
+            )
+        )
+        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+
+    def _register(self, request: Request):
+        self.gui.user_register_error.emit(request.data)
+
+    def login(self, login: str, passwd: str):
+
+        request = Request(
+            action=settings.Action.auth,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=User(
+                login=login,
+                password=passwd
+            )
+        )
+        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+
+    def _login(self, request: Request):
+
+        if request.status == settings.Status.ok:
+            self.user = User(
+                id=request.data.id,
+                login=request.data.login,
+                verbose_name=request.data.verbose_name
+            )
+            self.gui.user_logged_in.emit()
+        else:
+            self.gui.user_wrong_creds.emit(request.data)
+
+    def get_contacts(self):
+        request = Request(
+            action=settings.Action.contacts,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user
+        )
+        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+
+    def _get_contacts(self, request: Request):
+        self.db.save_contacts(request.data, self.user.login)
+        self.initialize()
 
     def initialize(self):
         contacts = self.db.get_contacts(owner=self.user.login)
         messages = self.db.get_messages(owner=self.user.login)
 
         for contact in contacts:
-            self.chat[contact.login] = {}
-            self.chat[contact.login]['new'] = Queue()
-            self.chat[contact.login]['was_read'] = [Request(
-                action=settings.Action.msg,
-                time=x.date.strftime(settings.DATE_FORMAT),
-                data=Message(
-                    to=x.contact.login if x.kind == 'outbox' else self.user.login,
-                    from_=x.contact.login if x.kind == 'inbox' else self.user.login,
-                    encoding='utf-8',
-                    message=x.text,
-                    date=x.date.strftime(settings.DATE_FORMAT),
-                ),
-            ) for x in messages if x.contact.login == contact.login]
-
-    @log
-    def receive(self):
-
-        received = self.connection.recv(self.buffer_size)
-        assert received, 'No data received'
-
-        return Request.parse_raw(received).status == settings.Status.ok
-
-    @log
-    def quit(self):
-        request = Request(
-            action=settings.Action.quit,
-            time=datetime.now().strftime(settings.DATE_FORMAT),
-            user=self.user if hasattr(self, 'user') else None
-        )
-        self.connection.send(
-            request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
-        )
-        self.is_connected = False
-
-    @log
-    def send_presence(self):
-    
-        request = Request(
-            action=settings.Action.presence,
-            time=datetime.now().strftime(settings.DATE_FORMAT)
-        )
-        request = request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
-        self.send_request(request)
-
-    @log
-    def send_request(self, request):
-        self.connection.send(request)
-        return True
-    
-    @log
-    def get_method(self, action):
-        methods = {
-            settings.Action.presence: self.send_presence,
-            settings.Action.msg: self.send_message,
-            settings.Action.recv: self.receive_message,
-            settings.Action.quit: self.quit
-        }
-        return methods.get(action, None)
+            self.chat[contact.login] = {
+                'new': Queue(),
+                'was_read': [
+                    Request(
+                        action=settings.Action.msg,
+                        time=x.date.strftime(settings.DATE_FORMAT),
+                        data=Message(
+                            to=x.contact.login if x.kind == 'outbox' else self.user.login,
+                            from_=x.contact.login if x.kind == 'inbox' else self.user.login,
+                            encoding='utf-8',
+                            message=x.text,
+                            date=x.date.strftime(settings.DATE_FORMAT),
+                        ),
+                    ) for x in messages if x.contact.login == contact.login
+                ]
+            }
+        self.initialized = True
 
     def find_contact(self, login):
         request = Request(
@@ -241,11 +255,11 @@ class TCPSocketClient(BaseTCPSocket):
         while self.is_connected:
             
             request = self.outbox.get(block=True)
-            result = self.send_request(
+            self.send(
                 request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
             self.save_message(request, 'outbox')
-            if not result:
-                self.is_connected = False
+            # if not result:
+            #     self.is_connected = False
     
     @log
     def notification(self):

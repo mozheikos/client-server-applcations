@@ -28,7 +28,7 @@ class UI(Ui_MainWindow):
         self.server = server
         self.thread = Thread(target=self.server.serve, name='server', daemon=True)
 
-    def setupUi(self, a=0):
+    def setupUi(self, _):
         super(UI, self).setupUi(self.application)
         self.get_server_settings()
         self.host_port_dialog.hide()
@@ -105,6 +105,6 @@ if __name__ == '__main__':
     ui = ServerUI()
     admin = UI(srv, ui)
 
-    admin.setupUi()
+    admin.setupUi(ui)
     ui.show()
     sys.exit(app.exec())
