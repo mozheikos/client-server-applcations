@@ -27,6 +27,7 @@ class Settings(BaseModel):
         search = 'search'
         add_chat = 'add_chat'
         del_chat = 'del_chat'
+        messages = 'messages'
 
     def __init__(self):
         super(Settings, self).__init__()

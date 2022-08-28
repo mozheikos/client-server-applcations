@@ -1,6 +1,6 @@
 import sqlalchemy.exc
-from sqlalchemy import Column, ForeignKey
-from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME
+from sqlalchemy import Column, ForeignKey, Boolean
+from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -66,6 +66,7 @@ class MessageHistory(Base):
     recipient_id = Column(INTEGER, ForeignKey('clients.id', onupdate='CASCADE', ondelete='SET NULL'))
     date = Column(DATETIME, nullable=False)
     content = Column(VARCHAR, nullable=False)
+    sent = Column(BOOLEAN)
 
     sender = relationship(
         Client,

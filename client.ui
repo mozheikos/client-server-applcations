@@ -127,7 +127,7 @@
      <enum>QTabWidget::Rounded</enum>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
     <property name="elideMode">
      <enum>Qt::ElideNone</enum>
@@ -424,16 +424,6 @@
      </widget>
     </widget>
    </widget>
-   <widget class="QPlainTextEdit" name="plainTextEdit">
-    <property name="geometry">
-     <rect>
-      <x>260</x>
-      <y>550</y>
-      <width>471</width>
-      <height>31</height>
-     </rect>
-    </property>
-   </widget>
    <widget class="QPushButton" name="send">
     <property name="geometry">
      <rect>
@@ -470,14 +460,69 @@
      </rect>
     </property>
    </widget>
+   <widget class="QListWidget" name="search_list">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>70</y>
+      <width>191</width>
+      <height>21</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="notification">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>0</y>
+      <width>541</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="styleSheet">
+     <string notr="true">color: rgb(239, 41, 41);</string>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLineEdit" name="message">
+    <property name="geometry">
+     <rect>
+      <x>260</x>
+      <y>550</y>
+      <width>471</width>
+      <height>31</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="username">
+    <property name="geometry">
+     <rect>
+      <x>95</x>
+      <y>5</y>
+      <width>160</width>
+      <height>30</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
    <zorder>message_box</zorder>
    <zorder>search_input</zorder>
    <zorder>search_button</zorder>
    <zorder>contacts</zorder>
    <zorder>reg_log_dialog</zorder>
-   <zorder>plainTextEdit</zorder>
    <zorder>send</zorder>
    <zorder>button_connect</zorder>
+   <zorder>search_list</zorder>
+   <zorder>notification</zorder>
+   <zorder>message</zorder>
+   <zorder>username</zorder>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
  </widget>

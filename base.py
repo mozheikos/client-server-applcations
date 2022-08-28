@@ -107,11 +107,11 @@ class TCPSocketServer(BaseTCPSocket):
         # селекте, если он готов для чтения - вызываю accept
         client, address = self.connection.accept()
         self.connected.append(client)
-        print(f"{address[0]} connected")
-    
-    @log
+        self.gui.console_log.emit(f"{address[0]} connected")
+
     def serve(self):
-        print('serving...')
+        self.gui.console_log.emit(f'Serving at {self.host}:{self.port}')
+
         write = []
         while True:
             try:
@@ -142,8 +142,7 @@ class TCPSocketServer(BaseTCPSocket):
                 self.connection.shutdown(SHUT_RDWR)
                 self.shutdown()
                 break
-            
-    @log
+
     def handle_request(self, client, writable):
         handler = self.request_handler(client, self, writable, self.database)
         handler.handle_request()

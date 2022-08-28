@@ -1,7 +1,8 @@
+import datetime
 import sys
 from threading import Thread
 from time import sleep
-from typing import Dict
+from typing import List
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import QColor
@@ -9,7 +10,8 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QListWidgetI
 
 from client import TCPSocketClient
 from client_ui import Ui_MainWindow
-from templates.templates import Request
+from common.config import settings
+from templates.templates import Request, User
 
 
 class ClientUI(QMainWindow):
@@ -21,6 +23,9 @@ class ClientUI(QMainWindow):
     history_received = QtCore.pyqtSignal()
     connected = QtCore.pyqtSignal()
     close = QtCore.pyqtSignal()
+    find_contact = QtCore.pyqtSignal(list)
+    add_contact = QtCore.pyqtSignal()
+    new_message = QtCore.pyqtSignal(str)
 
     def __init__(self):
         super(ClientUI, self).__init__()
@@ -30,6 +35,10 @@ class ClientUI(QMainWindow):
 
 
 class UI(Ui_MainWindow):
+    colors = {
+        True: (255, 192, 203),
+        False: (102, 205, 170)
+    }
 
     def __init__(self, client: TCPSocketClient, application: ClientUI):
         self.application = application
@@ -40,36 +49,97 @@ class UI(Ui_MainWindow):
         super(UI, self).setupUi(self.application)
         self.client.gui = self.application
         self.reg_log_dialog.hide()
+        self.search_list.hide()
         self.set_signals()
+        self.message_box.hide()
+        self.message.hide()
+        self.send.hide()
 
     def set_signals(self):
+        # connection
         self.application.connected.connect(self.client_login_dialog)
         self.application.close.connect(self.client_close_window)
 
+        # login/register
         self.login_btns.clicked.connect(self.client_login)
         self.reg_btns.clicked.connect(self.client_register)
         self.button_connect.clicked.connect(self.client_connect)
         self.application.user_logged_in.connect(self.client_login_ok)
         self.application.user_wrong_creds.connect(self.client_login_wrong)
         self.application.user_register_error.connect(self.client_register_error)
+
+        # render messages and contacts
         self.contacts.doubleClicked.connect(self.render_messages)
+        self.application.find_contact.connect(self.render_search)
+        self.search_button.clicked.connect(self.find_contacts)
+        self.search_list.doubleClicked.connect(self.add_contact)
+        self.application.add_contact.connect(self.render)
+        self.application.new_message.connect(self.new_message)
+        self.send.clicked.connect(self.send_message)
+
+    def send_message(self):
+        text = self.message.text()
+        self.message.clear()
+        contact = self.contacts.selectedItems()[0].text()
+        self.client.message(text, contact)
+        text = f"{self.client.user.login} {datetime.datetime.now().strftime(settings.DATE_FORMAT)}\n{text}"
+        self.render_message(text, QColor(*self.colors.get(False)))
+
+    def new_message(self, contact: str):
+        if self.contacts.selectedItems() and contact == self.contacts.selectedItems()[0].text():
+            messages = self.client.chat.get(contact)
+            while len(messages['new']):
+                item = messages['new'].popleft()
+                msg = f"{item.data.from_} {item.data.date}\n{item.data.message}"
+                color = QColor(*self.colors.get(item.data.from_ == contact))
+                self.render_message(msg, color)
+                messages['was_read'].append(item)
+        else:
+            self.notification.setText(f"New message from {contact}")
+
+    def find_contacts(self):
+        value = self.search_input.text()
+        self.client.find_contact(value)
+
+    def add_contact(self):
+        contact = self.search_list.selectedItems()[0].text()
+        self.search_list.clear()
+        self.search_input.clear()
+        self.client.add_contact(contact)
+        self.search_list.hide()
+
+    def render_search(self, users: List[User]):
+        self.search_list.clear()
+
+        for user in users:
+            contact = QListWidgetItem(user.login)
+            self.search_list.addItem(contact)
+        self.search_list.show()
+
+    def render_message(self, msg: str, color: QColor):
+        mess = QListWidgetItem(msg)
+        mess.setBackground(color)
+        self.message_box.addItem(mess)
 
     def render_messages(self):
 
-        colors = {
-            True: (255, 192, 203),
-            False: (102, 205, 170)
-        }
+        self.message_box.show()
+        self.message.show()
+        self.send.show()
 
-        contact = self.contacts.selectedItems()[0]
-        messages = self.client.chat.get(contact.text())
-        for message in messages['was_read']:
+        contact = self.contacts.selectedItems()[0].text()
+        messages = self.client.chat.get(contact)
+        self.message_box.clear()
+        for message in messages['was_read'] + messages['new']:
             message: Request
             mess = f"{message.data.from_} {message.data.date}\n" \
                    f"{message.data.message}"
-            mess = QListWidgetItem(mess)
-            mess.setBackground(QColor(*colors.get(message.data.from_ == contact.text())))
-            self.message_box.addItem(mess)
+            color = QColor(*self.colors.get(message.data.from_ == contact))
+            self.render_message(mess, color)
+        messages['was_read'].extend(messages['new'])
+        messages['new'].clear()
+        if self.notification.text() and self.notification.text().split()[-1] == contact:
+            self.notification.clear()
 
     def client_close_window(self):
         if self.client.is_connected:
@@ -97,7 +167,7 @@ class UI(Ui_MainWindow):
             passwd_2 = self.reg_passwd_input_2.text()
 
             if passwd_1 == passwd_2:
-                self.client.register(login, passwd_1)
+                self.client.login(login, passwd_1, True)
             else:
                 self.reg_error.setText("password and confirm dont match")
 
@@ -106,10 +176,10 @@ class UI(Ui_MainWindow):
 
     def client_login_ok(self):
         self.reg_log_dialog.hide()
-        self.client.get_contacts()
+        self.client.get_server_data()
         while not self.client.initialized:
             sleep(0.1)
-
+        self.username.setText(self.client.user.login)
         self.render()
 
     def render_contact(self, name: str):
@@ -117,6 +187,7 @@ class UI(Ui_MainWindow):
         self.contacts.addItem(contact)
 
     def render(self):
+        self.contacts.clear()
 
         for name in self.client.chat.keys():
             self.render_contact(name)

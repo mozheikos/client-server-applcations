@@ -15,19 +15,19 @@ class Base(BaseModel):
         }
 
 
+class User(Base):
+    id: Optional[int]
+    login: str
+    password: Optional[str]
+    verbose_name: Optional[str]
+
+
 class Message(Base):
     to: str
     from_: str
     encoding: str = 'utf-8'
     message: str
     date: Optional[str]
-
-
-class User(Base):
-    id: Optional[int]
-    login: str
-    password: Optional[str]
-    verbose_name: Optional[str]
 
 
 class Response(Base):
@@ -43,7 +43,7 @@ class Request(Base):
     time: str
     type: Optional[str]
     user: Optional[User]
-    data: Optional[Union[Message, User, str, List[User]]]
+    data: Optional[Union[Message, User, str, List[User], List[Message]]]
 
 
 # Пользовательский сокет сохраняю в виде списка, чтобы (ТЕОРЕТИЧЕСКИ) можно было подключиться с 2 устройств к одному

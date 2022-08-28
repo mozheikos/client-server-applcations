@@ -16,16 +16,16 @@ from templates.templates import Message, User, Request
 
 
 class Database:
-    def __init__(self):
+    def __init__(self, client: str = None):
         self.__create_tables = create_tables if self.__class__.__name__ == 'ServerDatabase' else create_client_tables
-        self._db = self._connect()
+        self._db = self._connect(client)
 
-    def _get_database(self) -> Engine:
-        factory = DatabaseFactory(self.__class__.__name__)
+    def _get_database(self, client: str) -> Engine:
+        factory = DatabaseFactory(self.__class__.__name__, client)
         return factory.get_engine()
 
-    def _connect(self) -> Session:
-        engine = self._get_database()
+    def _connect(self, client: str) -> Session:
+        engine = self._get_database(client)
         db_init = self.__create_tables(engine)
         if db_init:
             return Session(bind=engine)
@@ -44,11 +44,12 @@ class ServerDatabase(Database):
         user: Client = self._db.query(Client).filter(Client.login == username).one_or_none()
         return user
 
-    def search(self, value: str) -> Client:
-        user = self._db.query(Client).filter(Client.login == value).one_or_none()
-        if not user:
-            raise NotExist
-        return user
+    def search(self, value: str) -> List[User]:
+        users = self._db.query(Client).filter(Client.login.like(value)).all()
+
+        return [User(
+            id=x.id, login=x.login, verbose_name=x.verbose_name
+        ) for x in users]
 
     def auth_user(self, user: Client, ip: str):
         connected = ClientHistory(
@@ -97,7 +98,7 @@ class ServerDatabase(Database):
                 MessageHistory.sender_id == user.id,
                 MessageHistory.recipient_id == user.id
             )
-        ).all()
+        ).filter(MessageHistory.sent.is_not(True)).all()
 
         result = [Message(
             to=x.recipient.login,
@@ -108,7 +109,7 @@ class ServerDatabase(Database):
 
         return result
 
-    def create_message(self, data: Message):
+    def create_message(self, data: Message, sent: bool):
         sender = self.get_user(data.from_)
         if not sender:
             raise NotExist(f"Пользователь {data.from_} не существует")
@@ -121,7 +122,8 @@ class ServerDatabase(Database):
             date=datetime.datetime.strptime(data.date, settings.DATE_FORMAT),
             content=data.message,
             sender=sender,
-            recipient=recipient
+            recipient=recipient,
+            sent=sent
         )
         self._db.add(message)
         self._db.commit()
@@ -130,8 +132,8 @@ class ServerDatabase(Database):
 
         exist = self._db.query(Chat).filter(
             or_(
-                and_(Chat.init_id == user.id, Chat.other.id == other.id),
-                and_(Chat.init.id == other.id, Chat.other_id == user.id)
+                and_(Chat.init_id == user.id, Chat.other_id == other.id),
+                and_(Chat.init_id == other.id, Chat.other_id == user.id)
             )
         ).one_or_none()
 
@@ -171,59 +173,72 @@ class ServerDatabase(Database):
 
 class ClientDatabase(Database):
 
-    def __init__(self):
-        super(ClientDatabase, self).__init__()
+    def __init__(self, login: str):
+        super(ClientDatabase, self).__init__(login)
 
-    def save_contact(self, user: User, owner: str):
+    def save_contact(self, user: User):
         exist = self._db.query(Contact).filter(Contact.id == user.id).one_or_none()
         if exist:
             raise AlreadyExist
 
         contact = Contact(
             id=user.id,
-            owner=owner,
             login=user.login,
             verbose_name=user.verbose_name
         )
         self._db.add(contact)
         self._db.commit()
 
-    def save_contacts(self, users: List[User], owner: str):
+    def save_contacts(self, users: List[User]):
         for user in users:
             try:
-                self.save_contact(user, owner)
+                self.save_contact(user)
             except AlreadyExist:
                 continue
 
-    def get_contact(self, login: str, owner: str) -> Contact:
-        contact = self._db.query(Contact).filter(Contact.login == login).filter(Contact.owner == owner).one_or_none()
+    def get_contact(self, login: str) -> Contact:
+        contact = self._db.query(Contact).filter(Contact.login == login).one_or_none()
         if contact:
             return contact
 
-    def get_contacts(self, owner: str) -> List[Contact]:
+    def get_contacts(self) -> List[Contact]:
 
-        contacts = self._db.query(Contact).filter(Contact.owner == owner).all()
+        contacts = self._db.query(Contact).all()
         return [x for x in contacts]
 
-    def get_messages(self, owner: str) -> List[History]:
-        messages = self._db.query(History).filter(
-            History.owner == owner
-        ).all()
+    def get_messages(self) -> List[History]:
+        messages = self._db.query(History).all()
         return messages
 
-    def save_message(self, request: Request, kind: str, owner: str):
+    def save_message(self, request: Request, kind: str):
 
         if kind == 'outbox':
-            contact = self.get_contact(request.data.to, owner)
+            contact = self.get_contact(request.data.to)
         else:
-            contact = self.get_contact(request.data.from_, owner)
+            contact = self.get_contact(request.data.from_)
 
         msg = History(
             kind=kind,
             date=datetime.datetime.strptime(request.time, settings.DATE_FORMAT),
             text=request.data.message,
-            owner=owner,
             contact=contact
         )
         self._db.add(msg)
+        self._db.commit()
+
+    def save_messages(self, request: Request):
+
+        to_db = []
+        for message in request.data:
+            contact = self.get_contact(message.from_)
+            to_db.append(
+                History(
+                    kind='inbox',
+                    date=message.date,
+                    text=message.message,
+                    contact=contact
+                )
+            )
+
+        self._db.add_all(to_db)
         self._db.commit()
