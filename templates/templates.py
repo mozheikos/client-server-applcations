@@ -51,6 +51,6 @@ class Request(Base):
 # это нарушитель
 class ConnectedUser(Base):
     user: User
-    sock: List[socket]
+    sock: socket
     data: Deque[Union[str, Request]]
     

@@ -118,11 +118,9 @@ class RequestHandler:
                 data=self.message.user
             )
 
-            for sock in to_send.sock:
-                if sock in self.clients:
-                    sock.send(
-                        request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
-                    )
+            to_send.sock.send(
+                request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
+            )
 
         status = settings.Status.ok
         action = settings.Action.add_chat
@@ -162,10 +160,10 @@ class RequestHandler:
                 self.message.user.login,
                 ConnectedUser(
                     user=self.message.user,
-                    sock=[],
+                    sock=self.request,
                     data=deque()
                 )
-            ).sock.append(self.request)
+            )
             status = settings.Status.ok
             alert = User(id=user.id, login=user.login, verbose_name=user.verbose_name)
 
@@ -177,10 +175,8 @@ class RequestHandler:
 
         if to_send:
             self.db.create_message(self.message.data, True)
-            for sock in to_send.sock:
-                if sock in self.clients:
-                    sock.send(
-                        self.message.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+            to_send.sock.send(
+                self.message.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
                     
         else:
             self.db.create_message(self.message.data, False)
@@ -221,11 +217,10 @@ class RequestHandler:
         except ConnectionError as e:
             self.__handle_error(e)
 
+    @log
     def __close_request(self):
 
         self.request.close()
-        if self.message.user:
-            client = self.server.connected_users.get(self.message.user.login, None)
-            if client:
-                client.sock.remove(self.request)
+        if self.message and self.message.user:
+            self.server.connected_users.pop(self.message.user.login, None)
         self.server.connected.remove(self.request)

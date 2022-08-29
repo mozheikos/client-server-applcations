@@ -94,11 +94,13 @@ class ServerDatabase(Database):
     def get_message_history(self, user: User) -> List[Message]:
 
         messages: List[MessageHistory] = self._db.query(MessageHistory).filter(
-            or_(
-                MessageHistory.sender_id == user.id,
                 MessageHistory.recipient_id == user.id
-            )
-        ).filter(MessageHistory.sent.is_not(True)).all()
+        ).filter(MessageHistory.sent.is_(False)).all()
+
+        for mess in messages:
+            mess.sent = True
+            self._db.add(mess)
+        self._db.commit()
 
         result = [Message(
             to=x.recipient.login,
@@ -217,14 +219,16 @@ class ClientDatabase(Database):
         else:
             contact = self.get_contact(request.data.from_)
 
-        msg = History(
-            kind=kind,
-            date=datetime.datetime.strptime(request.time, settings.DATE_FORMAT),
-            text=request.data.message,
-            contact=contact
-        )
-        self._db.add(msg)
-        self._db.commit()
+        if contact:
+
+            msg = History(
+                kind=kind,
+                date=datetime.datetime.strptime(request.data.date, settings.DATE_FORMAT),
+                text=request.data.message,
+                contact=contact
+            )
+            self._db.add(msg)
+            self._db.commit()
 
     def save_messages(self, request: Request):
 
@@ -234,7 +238,7 @@ class ClientDatabase(Database):
             to_db.append(
                 History(
                     kind='inbox',
-                    date=message.date,
+                    date=datetime.datetime.strptime(message.date, settings.DATE_FORMAT),
                     text=message.message,
                     contact=contact
                 )
