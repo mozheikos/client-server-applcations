@@ -5,8 +5,10 @@ from typing import Optional
 from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
 from common.config import settings
+from common.exceptions import NotExist
 
 
 class DatabaseFactory:
@@ -21,12 +23,12 @@ class DatabaseFactory:
         name: str
 
         def get_src(self, client: str = None) -> str:
+            path = Path(__file__).resolve().parent.parent
             if client:
-                return f'sqlite+pysqlite:///{client}_database.sqlite3'
+                return f'sqlite+pysqlite:///{path}/client/{client}_database.sqlite3'
 
             if self.dialect == 'sqlite':
-                path = Path(__file__).resolve().parent
-                return f'sqlite+{self.driver}:///{path}/{self.name}'
+                return f'sqlite+pysqlite:///{path}/server/{self.name}'
             else:
                 return f'{self.dialect}+{self.driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}'
 
@@ -56,3 +58,27 @@ class DatabaseFactory:
         if self.__creds.dialect == 'sqlite':
             return create_engine(self.__creds.get_src(self.__client), connect_args={"check_same_thread": False})
         return create_engine(self.__creds.get_src())
+
+
+class Database:
+    def __init__(self, client: str = None):
+        self._db = self._connect(client)
+
+    @staticmethod
+    def _create_tables(engine: Engine):
+        raise NotImplementedError
+
+    def _get_database(self, client: str) -> Engine:
+        factory = DatabaseFactory(self.__class__.__name__, client)
+        return factory.get_engine()
+
+    def _connect(self, client: str) -> Session:
+        engine = self._get_database(client)
+        db_init = self._create_tables(engine)
+        if db_init:
+            return Session(bind=engine)
+        raise NotExist("Database creation error")
+
+    def __del__(self):
+        if hasattr(self, '_db'):
+            self._db.close()

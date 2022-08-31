@@ -3,9 +3,8 @@ from typing import Callable
 
 import pydantic
 
-from exceptions import NotAuthorised
+from common.exceptions import NotAuthorised
 from log.logger import logger
-from templates.templates import Request
 
 
 def log(func):
@@ -48,14 +47,12 @@ def login_required(f: Callable) -> Callable:
 
         self = args[0]
 
-        print(self.message.user.login)
-
         user = self.server.connected_users.get(self.message.user.login)
         if user:
             token = user.token
 
             user_token = self.message.user.token
-            print(token, user_token)
+
             if token != user_token:
                 raise NotAuthorised
 

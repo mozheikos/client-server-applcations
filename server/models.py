@@ -1,5 +1,5 @@
 import sqlalchemy.exc
-from sqlalchemy import Column, ForeignKey, Boolean
+from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import relationship, declarative_base

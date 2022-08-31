@@ -1,25 +1,124 @@
 import json
+from _socket import SHUT_RDWR
 from collections import deque
-from datetime import datetime
+import datetime
+from select import select
 from socket import socket
-from typing import Union, List, Optional
+from typing import Union, List, Optional, Tuple
 
 import rsa
 from cryptography.fernet import Fernet
 from pydantic import ValidationError
 
-from base import TCPSocketServer
+from common.base import BaseTCPSocket
 from common.config import settings
+from common.decorators import login_required
+from common.exceptions import AlreadyExist, NotExist, NotAuthorised
 from common.utils import generate_session_token, get_hashed_password
-from databases import ServerDatabase
-from decorators import log, login_required
-from exceptions import AlreadyExist, NotExist, NotAuthorised
+from server.database import ServerDatabase
 from templates.templates import Request, ConnectedUser, User, Message
+
+
+class TCPSocketServer(BaseTCPSocket):
+    pool_size: int = 5
+    request_handler = None
+    connected = []
+    connected_users = {}
+    public_keys = {}
+
+    def __init__(
+            self,
+            handler,
+            host: str = None,
+            port: int = None,
+            buffer: int = None,
+            pool_size: int = None,
+            bind_and_listen: bool = True,
+    ):
+        """Initialize server class
+
+        Args:
+            host (str): address to listen (IPv4)
+            port (int): port to listen
+            buffer (int): size of receiving buffer, bytes
+            pool_size (int): listening queue size
+        """
+        super(TCPSocketServer, self).__init__(host, port, buffer)
+
+        self._public, self._private = self.__generate_keys()
+        self.gui = None
+        self.request_handler = handler
+        self.database = ServerDatabase()
+
+        if pool_size:
+            assert isinstance(pool_size, int), "Variable 'pool_size' must be int"
+            self.pool_size = pool_size
+
+        if bind_and_listen:
+            self.bind_and_listen()
+
+    @staticmethod
+    def __generate_keys() -> Tuple[rsa.PublicKey, rsa.PrivateKey]:
+        return rsa.newkeys(512, poolsize=16)
+
+    def bind_and_listen(self) -> None:
+        """
+            Initialize server socket. Calls on initialization of class automatically.
+            Can be called manually, if start = False
+        """
+
+        self.connection.bind((self.host, self.port))
+        self.connection.listen(self.pool_size)
+        self.connected.append(self.connection)
+
+    def accept_connection(self):
+
+        client, address = self.connection.accept()
+        self.connected.append(client)
+        client.send(json.dumps([self._public.n, self._public.e]).encode(settings.DEFAULT_ENCODING))
+        self.gui.console_log.emit(f"{address[0]} connected")
+
+    def serve(self):
+        self.gui.console_log.emit(f'Serving at {self.host}:{self.port}')
+
+        write = []
+        while True:
+            try:
+                write: List[socket]
+                read, write, _ = select(self.connected, self.connected, [])
+
+                for sock in read:
+                    if sock is self.connection:
+                        self.accept_connection()
+                    else:
+                        self.handle_request(sock, write)
+
+            # KeyboardInterrupt возбуждается по CTRL + C, добавил обработку для корректного завершения и отправки
+            # клиентам сигнала о том, что сервер недоступен
+            except KeyboardInterrupt:
+                for sock in write:
+                    if sock is self.connection:
+                        continue
+                    request = Request(
+                        action=settings.Action.server_shutdown,
+                        time=datetime.datetime.now().strftime(settings.DATE_FORMAT)
+                    )
+                    try:
+                        sock.send(request.json(exclude_none=True).encode(settings.DEFAULT_ENCODING))
+                        sock.close()
+                    except OSError:
+                        continue
+                self.connection.shutdown(SHUT_RDWR)
+                self.shutdown()
+                break
+
+    def handle_request(self, client, writable):
+        handler = self.request_handler(client, self, writable, self.database, self._public, self._private)
+        handler.handle_request()
 
 
 class RequestHandler:
 
-    @log
     def __init__(
             self,
             request: socket,
@@ -37,7 +136,6 @@ class RequestHandler:
         self.clients = clients
         self.db = database
 
-    @log
     def get_method(self):
 
         methods = {
@@ -79,14 +177,17 @@ class RequestHandler:
         """Регистрация нового пользователя"""
         try:
             self.db.create_user(self.message.user)
+
         except AlreadyExist:
             status = settings.Status.unauthorized
             alert = f'User {self.message.user.login} already exist'
             self.__send_response(status, alert, settings.Action.register)
+
         except AssertionError:
             status = settings.Status.unauthorized
             alert = f'Password required'
             self.__send_response(status, alert, settings.Action.register)
+
         else:
             self.__handle_auth()
 
@@ -100,7 +201,7 @@ class RequestHandler:
         response = Request(
             status=status,
             action=action,
-            time=datetime.now().strftime(settings.DATE_FORMAT),
+            time=datetime.datetime.now().strftime(settings.DATE_FORMAT),
             type='response',
             data=alert
         )
@@ -128,7 +229,7 @@ class RequestHandler:
             request = Request(
                 status=settings.Status.ok,
                 action=settings.Action.add_chat,
-                time=datetime.now().strftime(settings.DATE_FORMAT),
+                time=datetime.datetime.now().strftime(settings.DATE_FORMAT),
                 type='request',
                 data=self.message.user
             )
@@ -161,7 +262,7 @@ class RequestHandler:
         self.server.public_keys[self.request] = key
 
         ip = self.request.getpeername()
-        date = datetime.now().strftime(settings.DATE_FORMAT)
+        date = datetime.datetime.now().strftime(settings.DATE_FORMAT)
         self.server.gui.user_connected.emit({'ip': ip[0], 'port': str(ip[1]), 'date': date})
         self.__send_response(settings.Status.ok, 'Success', settings.Action.presence)
 
@@ -276,7 +377,6 @@ class RequestHandler:
         except ConnectionError as e:
             self.__handle_error(e)
 
-    @log
     def __close_request(self):
         address, port = self.request.getpeername()
         self.server.gui.console_log.emit(f"User {address}:{port} disconnected")

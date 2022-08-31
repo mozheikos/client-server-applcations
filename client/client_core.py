@@ -1,33 +1,27 @@
 import json
 from collections import deque
 from datetime import datetime
-from queue import Queue
 from time import sleep
 from typing import Optional, Callable, Dict, Tuple
 
 import rsa
 from cryptography.fernet import Fernet
 
-from base import BaseTCPSocket
+from client.database import ClientDatabase
+from common.base import BaseTCPSocket
 from common.config import settings
-from databases import ClientDatabase
-from decorators import log
-from exceptions import AlreadyExist
+from common.exceptions import AlreadyExist
 from templates.templates import Request, User, Message
 
 
 class TCPSocketClient(BaseTCPSocket):
-    
+
     user: User
     gui = None
     is_connected = False
-    
-    inbox = Queue()
-    outbox = Queue()
     chat: Dict[str, Dict[str, deque]] = {}
     found_contacts = {}
 
-    @log
     def __init__(
             self,
             host: str = None,
@@ -78,7 +72,10 @@ class TCPSocketClient(BaseTCPSocket):
 
             request: Request = Request.parse_raw(received)
 
-            if request.status == settings.Status.unauthorized:
+            if request.status == settings.Status.unauthorized and request.action not in (
+                    settings.Action.auth, settings.Action.register
+            ):
+
                 self.is_connected = False
                 self._connect()
                 self._authorization_error()
@@ -104,8 +101,8 @@ class TCPSocketClient(BaseTCPSocket):
     def connect(self):
         try:
             self.connection.connect((self.host, self.port))
-        except Exception as e:
-            raise e
+        except Exception as exception:
+            raise exception
         else:
             key = json.loads(self.connection.recv(self.buffer_size).decode(settings.DEFAULT_ENCODING))
             self.server_key = rsa.PublicKey(*key)
@@ -284,7 +281,7 @@ class TCPSocketClient(BaseTCPSocket):
         except AlreadyExist:
             ...
 
-        if contact.login not in self.chat.keys():
+        if contact.login not in self.chat:
             self.chat[contact.login] = {}
             self.chat[contact.login]['new'] = deque()
             self.chat[contact.login]['was_read'] = deque()

@@ -1,15 +1,14 @@
 import json
-import sys
+from pathlib import Path
 from threading import Thread
 from typing import Dict
 
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QApplication, QPushButton, QListWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QPushButton, QListWidgetItem
 
-from base import TCPSocketServer
 from common.config import settings
-from server import RequestHandler
-from server_ui import Ui_MainWindow
+from server.gui.server_ui import Ui_MainWindow
+from server.server_core import TCPSocketServer
 
 
 class ServerUI(QMainWindow):
@@ -51,11 +50,13 @@ class UI(Ui_MainWindow):
     def confirm_settings(self, e: QPushButton):
         if e.text() == '&OK':
 
+            path = Path(__file__).resolve().parent.parent
+
             host = self.settings_host.text()
             port = self.settings_port.text()
             database = self.settings_db_choice.currentText()
 
-            with open('common/config.json', 'r', encoding='utf-8') as f:
+            with open(f'{path}/common/config.json', 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 if host:
                     config['HOST'] = host
@@ -64,7 +65,7 @@ class UI(Ui_MainWindow):
 
                 config['DATABASE'] = database
 
-            with open('common/config.json', 'w', encoding='utf-8') as f:
+            with open(f'{path}/common/config.json', 'w', encoding='utf-8') as f:
                 f.write(json.dumps(config, indent=4, ensure_ascii=False))
             self.restart_needed.show()
         self.host_port_dialog.hide()
@@ -90,26 +91,11 @@ class UI(Ui_MainWindow):
                 break
 
     def get_server_settings(self):
-        with open(f"database/config.json", 'r', encoding='utf-8') as f:
+        path = Path(__file__).resolve().parent.parent
+        with open(f"{path}/db/config.json", 'r', encoding='utf-8') as f:
             databases = json.load(f)
 
         self.settings_db_choice.addItems(list(databases['ServerDatabase'].keys()))
         self.admin_host.setText(settings.HOST)
         self.admin_port.setText(str(settings.PORT))
         self.admin_database.setText(settings.DATABASE)
-
-
-if __name__ == '__main__':
-    srv = TCPSocketServer(
-        handler=RequestHandler,
-        host=settings.HOST,
-        port=settings.PORT,
-        bind_and_listen=True
-    )
-    app = QApplication([])
-    ui = ServerUI()
-    admin = UI(srv, ui)
-
-    admin.setupUi(ui)
-    ui.show()
-    sys.exit(app.exec())

@@ -1,15 +1,13 @@
 import datetime
-import sys
 from threading import Thread
-from time import sleep
 from typing import List
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import QColor
-from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QListWidgetItem
+from PyQt5.QtWidgets import QMainWindow, QPushButton, QListWidgetItem
 
-from client import TCPSocketClient
-from client_ui import Ui_MainWindow
+from client.client_core import TCPSocketClient
+from client.gui.client_ui import Ui_MainWindow
 from common.config import settings
 from templates.templates import Request, User
 
@@ -29,8 +27,8 @@ class ClientUI(QMainWindow):
     auth_error = QtCore.pyqtSignal()
     initialized = QtCore.pyqtSignal()
 
-    def __init__(self):
-        super(ClientUI, self).__init__()
+    # def __init__(self):
+    #     super(ClientUI, self).__init__()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
         self.close.emit()
@@ -194,8 +192,6 @@ class UI(Ui_MainWindow):
     def client_login_ok(self):
         self.reg_log_dialog.hide()
         self.client.get_server_data()
-        # while not self.client.initialized:
-        #     sleep(0.1)
 
     def initialize_ok(self):
         self.username.setText(self.client.user.login)
@@ -221,15 +217,3 @@ class UI(Ui_MainWindow):
             self.client.login(login, passwd)
         else:
             self.client_close_window()
-
-
-if __name__ == '__main__':
-
-    clt = TCPSocketClient(host='localhost', port=7777, buffer=8192, connect=False)
-
-    app = QApplication([])
-    ui = ClientUI()
-    window = UI(clt, ui)
-    window.setupUi(ui)
-    ui.show()
-    sys.exit(app.exec())

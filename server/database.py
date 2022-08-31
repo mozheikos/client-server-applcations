@@ -1,44 +1,25 @@
 import datetime
-from typing import List, Optional
+from typing import Optional, List
 
 from sqlalchemy import or_, and_
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 
 from common.config import settings
+from common.exceptions import AlreadyExist, NotExist
 from common.utils import get_hashed_password
-from database.client_models import Contact, History
-from database.core import DatabaseFactory
-from database.server_models import MessageHistory, Client, ClientHistory, create_tables, Chat
-from database.client_models import create_tables as create_client_tables
-from exceptions import NotExist, AlreadyExist
-from templates.templates import Message, User, Request
-
-
-class Database:
-    def __init__(self, client: str = None):
-        self.__create_tables = create_tables if self.__class__.__name__ == 'ServerDatabase' else create_client_tables
-        self._db = self._connect(client)
-
-    def _get_database(self, client: str) -> Engine:
-        factory = DatabaseFactory(self.__class__.__name__, client)
-        return factory.get_engine()
-
-    def _connect(self, client: str) -> Session:
-        engine = self._get_database(client)
-        db_init = self.__create_tables(engine)
-        if db_init:
-            return Session(bind=engine)
-        raise NotExist("Database creation error")
-        
-    def __del__(self):
-        self._db.close()
+from db.core import Database
+from server.models import Client, create_tables, ClientHistory, Chat, MessageHistory
+from templates.templates import User, Message
 
 
 class ServerDatabase(Database):
 
     def __init__(self):
         super(ServerDatabase, self).__init__()
+
+    @staticmethod
+    def _create_tables(engine: Engine):
+        return create_tables(engine)
 
     def get_user(self, username: str) -> Optional[Client]:
         user: Client = self._db.query(Client).filter(Client.login == username).one_or_none()
@@ -170,79 +151,4 @@ class ServerDatabase(Database):
             raise NotExist('Chat not exist')
 
         self._db.delete(chat)
-        self._db.commit()
-
-
-class ClientDatabase(Database):
-
-    def __init__(self, login: str):
-        super(ClientDatabase, self).__init__(login)
-
-    def save_contact(self, user: User):
-        exist = self._db.query(Contact).filter(Contact.id == user.id).one_or_none()
-        if exist:
-            raise AlreadyExist
-
-        contact = Contact(
-            id=user.id,
-            login=user.login,
-            verbose_name=user.verbose_name
-        )
-        self._db.add(contact)
-        self._db.commit()
-
-    def save_contacts(self, users: List[User]):
-        for user in users:
-            try:
-                self.save_contact(user)
-            except AlreadyExist:
-                continue
-
-    def get_contact(self, login: str) -> Contact:
-        contact = self._db.query(Contact).filter(Contact.login == login).one_or_none()
-        if contact:
-            return contact
-
-    def get_contacts(self) -> List[Contact]:
-
-        contacts = self._db.query(Contact).all()
-        return [x for x in contacts]
-
-    def get_messages(self) -> List[History]:
-        messages = self._db.query(History).all()
-        return messages
-
-    def save_message(self, request: Request, kind: str):
-
-        if kind == 'outbox':
-            contact = self.get_contact(request.data.to)
-        else:
-            contact = self.get_contact(request.data.from_)
-
-        if contact:
-
-            msg = History(
-                kind=kind,
-                date=datetime.datetime.strptime(request.data.date, settings.DATE_FORMAT),
-                text=request.data.message,
-                contact=contact
-            )
-            self._db.add(msg)
-            self._db.commit()
-
-    def save_messages(self, request: Request):
-
-        to_db = []
-        for message in request.data:
-            contact = self.get_contact(message.from_)
-            to_db.append(
-                History(
-                    kind='inbox',
-                    date=datetime.datetime.strptime(message.date, settings.DATE_FORMAT),
-                    text=message.message,
-                    contact=contact
-                )
-            )
-
-        self._db.add_all(to_db)
         self._db.commit()
