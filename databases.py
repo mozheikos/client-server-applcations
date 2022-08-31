@@ -1,34 +1,35 @@
 import datetime
 from typing import List, Optional
 
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
 from common.config import settings
 from common.utils import get_hashed_password
+from database.client_models import Contact, History
 from database.core import DatabaseFactory
-from database.server_models import MessageHistory, Client, ClientHistory, create_tables
-from exceptions import UserNotExist, UserAlreadyExist, DatabaseNotExist
-from templates.templates import Message, User
+from database.server_models import MessageHistory, Client, ClientHistory, create_tables, Chat
+from database.client_models import create_tables as create_client_tables
+from exceptions import NotExist, AlreadyExist
+from templates.templates import Message, User, Request
 
 
 class Database:
+    def __init__(self, client: str = None):
+        self.__create_tables = create_tables if self.__class__.__name__ == 'ServerDatabase' else create_client_tables
+        self._db = self._connect(client)
 
-    def __init__(self):
-        self._db = self._connect()
-
-    @staticmethod
-    def _get_database() -> Engine:
-        factory = DatabaseFactory()
+    def _get_database(self, client: str) -> Engine:
+        factory = DatabaseFactory(self.__class__.__name__, client)
         return factory.get_engine()
 
-    def _connect(self) -> Session:
-        engine = self._get_database()
-        db_init = create_tables(engine)
+    def _connect(self, client: str) -> Session:
+        engine = self._get_database(client)
+        db_init = self.__create_tables(engine)
         if db_init:
             return Session(bind=engine)
-        raise DatabaseNotExist("Database creation error")
+        raise NotExist("Database creation error")
         
     def __del__(self):
         self._db.close()
@@ -43,9 +44,25 @@ class ServerDatabase(Database):
         user: Client = self._db.query(Client).filter(Client.login == username).one_or_none()
         return user
 
-    def create_user(self, user: User, ip: str) -> int:
+    def search(self, value: str) -> List[User]:
+        users = self._db.query(Client).filter(Client.login.like(value)).all()
+
+        return [User(
+            id=x.id, login=x.login, verbose_name=x.verbose_name
+        ) for x in users]
+
+    def auth_user(self, user: Client, ip: str):
+        connected = ClientHistory(
+            client=user,
+            date=datetime.datetime.now(),
+            address=ip
+        )
+        self._db.add(connected)
+        self._db.commit()
+
+    def create_user(self, user: User) -> int:
         if self.get_user(user.login):
-            raise UserAlreadyExist(f'Пользователь <{user.login}> уже существует')
+            raise AlreadyExist(f'Пользователь <{user.login}> уже существует')
 
         assert user.password, "Необходимо задать пароль"
 
@@ -56,44 +73,34 @@ class ServerDatabase(Database):
             verbose_name=user.verbose_name if user.verbose_name else f"@{user.login}",
             created_at=datetime.datetime.now()
         )
-        connected = ClientHistory(
-            client=client,
-            date=datetime.datetime.now(),
-            address=ip
-        )
 
-        self._db.add(connected)
+        self._db.add(client)
         self._db.commit()
 
         return client.id
 
-    def get_user_contact_list(self, user: User) -> List[str]:
-        pk = self._db.query(Client.id).filter(Client.login == user.login).scalar()
+    def get_user_contact_list(self, user: User) -> List[Client]:
 
-        sent = self._db.query(Client.login).join(MessageHistory, MessageHistory.recipient_id == Client.id).filter(
-            MessageHistory.sender_id == pk
+        contacts: List[Chat] = self._db.query(Chat).filter(
+            or_(
+                Chat.init_id == user.id,
+                Chat.other_id == user.id
+            )
         ).all()
 
-        receive = self._db.query(Client.login).join(MessageHistory, MessageHistory.sender_id == Client.id).filter(
-            MessageHistory.recipient_id == pk
-        ).all()
-
-        result = [x[0] for x in sent + receive]
+        result = [x.other if x.init_id == user.id else x.init for x in contacts]
         return result
 
-    def get_message_history(self, user: str, recipient: str) -> List[Message]:
+    def get_message_history(self, user: User) -> List[Message]:
 
         messages: List[MessageHistory] = self._db.query(MessageHistory).filter(
-            or_(
-                MessageHistory.sender.login == user,
-                MessageHistory.recipient.login == user
-            )
-        ).filter(
-            or_(
-                MessageHistory.sender.login == recipient,
-                MessageHistory.recipient.login == recipient
-            )
-        ).all()
+                MessageHistory.recipient_id == user.id
+        ).filter(MessageHistory.sent.is_(False)).all()
+
+        for mess in messages:
+            mess.sent = True
+            self._db.add(mess)
+        self._db.commit()
 
         result = [Message(
             to=x.recipient.login,
@@ -104,20 +111,138 @@ class ServerDatabase(Database):
 
         return result
 
-    def create_message(self, data: Message):
+    def create_message(self, data: Message, sent: bool):
         sender = self.get_user(data.from_)
         if not sender:
-            raise UserNotExist(f"Пользователь {data.from_} не существует")
+            raise NotExist(f"Пользователь {data.from_} не существует")
 
         recipient = self.get_user(data.to)
         if not recipient:
-            raise UserNotExist(f"Пользователь {data.from_} не существует")
+            raise NotExist(f"Пользователь {data.from_} не существует")
 
         message = MessageHistory(
             date=datetime.datetime.strptime(data.date, settings.DATE_FORMAT),
             content=data.message,
             sender=sender,
-            recipient=recipient
+            recipient=recipient,
+            sent=sent
         )
         self._db.add(message)
+        self._db.commit()
+
+    def create_chat(self, user: User, other: User) -> int:
+
+        exist = self._db.query(Chat).filter(
+            or_(
+                and_(Chat.init_id == user.id, Chat.other_id == other.id),
+                and_(Chat.init_id == other.id, Chat.other_id == user.id)
+            )
+        ).one_or_none()
+
+        if exist:
+            raise AlreadyExist("Чат уже существует")
+
+        init = self.get_user(user.login)
+        other = self.get_user(other.login)
+
+        obj = Chat(
+            init=init,
+            other=other
+        )
+        self._db.add(obj)
+        self._db.commit()
+        return obj.id
+
+    def delete_chat(self, user: User, other: User):
+
+        chat = self._db.query(Chat).filter(or_(
+            and_(
+                Chat.init_id == user.id,
+                Chat.other_id == other.id
+            ),
+            and_(
+                Chat.init_id == other.id,
+                Chat.other_id == user.id
+            )
+        )).one_or_none()
+
+        if not chat:
+            raise NotExist('Chat not exist')
+
+        self._db.delete(chat)
+        self._db.commit()
+
+
+class ClientDatabase(Database):
+
+    def __init__(self, login: str):
+        super(ClientDatabase, self).__init__(login)
+
+    def save_contact(self, user: User):
+        exist = self._db.query(Contact).filter(Contact.id == user.id).one_or_none()
+        if exist:
+            raise AlreadyExist
+
+        contact = Contact(
+            id=user.id,
+            login=user.login,
+            verbose_name=user.verbose_name
+        )
+        self._db.add(contact)
+        self._db.commit()
+
+    def save_contacts(self, users: List[User]):
+        for user in users:
+            try:
+                self.save_contact(user)
+            except AlreadyExist:
+                continue
+
+    def get_contact(self, login: str) -> Contact:
+        contact = self._db.query(Contact).filter(Contact.login == login).one_or_none()
+        if contact:
+            return contact
+
+    def get_contacts(self) -> List[Contact]:
+
+        contacts = self._db.query(Contact).all()
+        return [x for x in contacts]
+
+    def get_messages(self) -> List[History]:
+        messages = self._db.query(History).all()
+        return messages
+
+    def save_message(self, request: Request, kind: str):
+
+        if kind == 'outbox':
+            contact = self.get_contact(request.data.to)
+        else:
+            contact = self.get_contact(request.data.from_)
+
+        if contact:
+
+            msg = History(
+                kind=kind,
+                date=datetime.datetime.strptime(request.data.date, settings.DATE_FORMAT),
+                text=request.data.message,
+                contact=contact
+            )
+            self._db.add(msg)
+            self._db.commit()
+
+    def save_messages(self, request: Request):
+
+        to_db = []
+        for message in request.data:
+            contact = self.get_contact(message.from_)
+            to_db.append(
+                History(
+                    kind='inbox',
+                    date=datetime.datetime.strptime(message.date, settings.DATE_FORMAT),
+                    text=message.message,
+                    contact=contact
+                )
+            )
+
+        self._db.add_all(to_db)
         self._db.commit()

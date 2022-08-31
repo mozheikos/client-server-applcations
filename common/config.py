@@ -23,6 +23,11 @@ class Settings(BaseModel):
         msg = 'msg'
         recv = 'recv'
         server_shutdown = 'server_shutdown'
+        contacts = 'contacts'
+        search = 'search'
+        add_chat = 'add_chat'
+        del_chat = 'del_chat'
+        messages = 'messages'
 
     def __init__(self):
         super(Settings, self).__init__()

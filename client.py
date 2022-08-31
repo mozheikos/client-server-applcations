@@ -1,33 +1,32 @@
-import os
-import sys
+import json
+from collections import deque
 from datetime import datetime
 from queue import Queue
-from threading import Thread, Lock
 from time import sleep
-from typing import Tuple
+from typing import Optional, Callable, Dict, Tuple
+
+import rsa
+from cryptography.fernet import Fernet
 
 from base import BaseTCPSocket
 from common.config import settings
-from common.utils import get_cmd_arguments
+from databases import ClientDatabase
 from decorators import log
-from templates.templates import Request, User, Response, Message
+from exceptions import AlreadyExist
+from templates.templates import Request, User, Message
 
 
 class TCPSocketClient(BaseTCPSocket):
     
     user: User
-    
+    gui = None
     is_connected = False
     
     inbox = Queue()
     outbox = Queue()
-    action = None
-    chat_stop = False
-    chat = {}
-    lock = Lock()
-    to_print = True
-    notify = (False, '')
-    
+    chat: Dict[str, Dict[str, deque]] = {}
+    found_contacts = {}
+
     @log
     def __init__(
             self,
@@ -36,355 +35,290 @@ class TCPSocketClient(BaseTCPSocket):
             buffer: int = None,
             connect: bool = False
     ):
-        
-        super(TCPSocketClient, self).__init__(host, port, buffer)
 
+        super(TCPSocketClient, self).__init__(host, port, buffer)
+        self.__pubkey, self.__privkey = self.__generate_keys()
+        self.db: Optional[ClientDatabase] = None
+        self.contacts_fetch = False
+        self.messages_fetch = False
+        self.auth_error = False
+        self.server_key: Optional[rsa.PublicKey] = None
         if connect:
             self.connect()
 
-    def auth(self, action: settings.Action) -> Tuple[str, str]:
+    @staticmethod
+    def __generate_keys() -> Tuple[rsa.PublicKey, rsa.PrivateKey]:
+        return rsa.newkeys(512, poolsize=16)
 
-        os.system('clear')
-        login = input('login: ')
-        passwd = input('password: ')
-        request = Request(
-            action=action,
-            time=datetime.now().strftime(settings.DATE_FORMAT),
-            user=User(
-                login=login,
-                password=passwd
-            )
-        )
-        self.send_request(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
-        received = self.connection.recv(self.buffer_size)
-        print(received)
-        assert received, 'No data received'
+    def get_handler(self, action) -> Callable:
+        methods = {
+            settings.Action.presence: self._presence,
+            settings.Action.register: self._register,
+            settings.Action.auth: self._login,
+            settings.Action.contacts: self._get_contacts,
+            settings.Action.messages: self._get_history,
+            settings.Action.msg: self._message,
+            settings.Action.search: self._find_contact,
+            settings.Action.add_chat: self._add_contact
+        }
+        return methods.get(action, None)
 
-        result = Response.parse_raw(received)
-        if result.response == settings.Status.ok:
-            self.user = User(
-                id=result.alert,
-                login=login,
-                password=passwd,
-                verbose_name=f'@{login}'
-            )
-            return 'success', ''
-        print(result.alert)
-        user_action = input('1.login\n2. register\nInput option or "exit" for quit: ')
-        return result.alert, user_action
-
-    def shutdown(self):
-        self.quit()
-        self.connection.close()
-    
-    @log
-    def connect(self):
-        try:
-            self.connection.connect((self.host, self.port))
-        except Exception as e:
-            raise e
-        else:
-            self.is_connected = True
-            self.send_presence()
-            if self.receive():
-                print(f'Connected')
-            else:
-                self.is_connected = False
-
-    @log
     def receive(self):
 
-        received = self.connection.recv(self.buffer_size)
-        assert received, 'No data received'
+        while self.is_connected:
 
-        return Response.parse_raw(received).response == settings.Status.ok
+            data = self.connection.recv(self.buffer_size)
+            if not data:
+                continue
 
-    @log
+            try:
+                received = self._decrypt(data)
+            except rsa.pkcs1.DecryptionError:
+                continue
+
+            request: Request = Request.parse_raw(received)
+
+            if request.status == settings.Status.unauthorized:
+                self.is_connected = False
+                self._connect()
+                self._authorization_error()
+            else:
+                handler = self.get_handler(request.action)
+                assert handler, 'Action not allowed'
+
+                handler(request)
+
+    def _authorization_error(self):
+        self.auth_error = True
+        self.gui.auth_error.emit()
+
     def quit(self):
         request = Request(
             action=settings.Action.quit,
             time=datetime.now().strftime(settings.DATE_FORMAT),
             user=self.user if hasattr(self, 'user') else None
         )
-        self.connection.send(
-            request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
-        )
+        self.send_request(request)
         self.is_connected = False
 
-    @log
-    def send_presence(self):
-    
+    def connect(self):
+        try:
+            self.connection.connect((self.host, self.port))
+        except Exception as e:
+            raise e
+        else:
+            key = json.loads(self.connection.recv(self.buffer_size).decode(settings.DEFAULT_ENCODING))
+            self.server_key = rsa.PublicKey(*key)
+            self.is_connected = True
+            self.presence()
+
+    def _decrypt(self, request: bytes) -> bytes:
+        length = 64  # length of fernet key, encoded with rsa
+        decoded_key, payload = request[:length], request[length:]
+
+        cipher = rsa.decrypt(decoded_key, self.__privkey)
+
+        cipher_key = Fernet(cipher)
+        data = cipher_key.decrypt(payload)
+        return data
+
+    def _encrypt(self, request: Request) -> bytes:
+
+        cipher = Fernet.generate_key()
+        cipher_key = Fernet(cipher)
+
+        encoded_data = cipher_key.encrypt(
+            request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
+        )
+        encoded_key = rsa.encrypt(cipher, self.server_key)
+
+        return encoded_key + encoded_data
+
+    def send_request(self, request: Request):
+        self.connection.send(self._encrypt(request))
+
+    def presence(self):
+
         request = Request(
             action=settings.Action.presence,
-            time=datetime.now().strftime(settings.DATE_FORMAT)
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            data=[self.__pubkey.n, self.__pubkey.e]
         )
-        request = request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
         self.send_request(request)
 
-    @log
-    def send_request(self, request):
-        self.connection.send(request)
-        return True
-    
-    @log
-    def get_method(self, action):
-        methods = {
-            'presence': self.send_presence,
-            'msg': self.send_message,
-            'recv': self.receive_message,
-            'quit': self.quit
-        }
-        return methods.get(action, None)
-    
-    def get_contact(self, key):
-        if key not in self.chat.keys():
-            self.chat[key] = {}
-            self.chat[key]['new'] = Queue()
-            self.chat[key]['was_read'] = []
-        return self.chat.get(key, None)
-        
-    @log
-    def receive_message(self):
-        """Put new inbox message to queue"""
+    def _presence(self, request: Request):
+        if request.status == settings.Status.ok:
+            self.gui.connected.emit()
+        else:
+            self.quit()
+            self.shutdown()
+            self.is_connected = False
 
-        while self.is_connected:
-            data = self.connection.recv(self.buffer_size)
-            
-            if data:
-                message = Request.parse_raw(data)
-                if message.action == settings.Action.msg:
-                    self.inbox.put(message)
-                elif message.action == settings.Action.server_shutdown:
-                    self.is_connected = False
-                    
-            else:
-                self.is_connected = False
-    
-    @log
-    def send_message(self):
+    def _register(self, request: Request):
+        self.gui.user_register_error.emit(request.data)
+
+    def login(self, login: str, passwd: str, register: bool = False):
+        self.db = ClientDatabase(login)
+        request = Request(
+            action=settings.Action.auth if not register else settings.Action.register,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=User(
+                login=login,
+                password=passwd
+            )
+        )
+        self.send_request(request)
+
+    def _login(self, request: Request):
+
+        if request.status == settings.Status.ok:
+            self.user = User(
+                id=request.data.id,
+                login=request.data.login,
+                verbose_name=request.data.verbose_name,
+                token=request.data.token
+            )
+            self.auth_error = False
+            self.gui.user_logged_in.emit()
+        else:
+            self.gui.user_wrong_creds.emit(request.data)
+
+    def get_contacts(self):
+        request = Request(
+            action=settings.Action.contacts,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user
+        )
+        self.send_request(request)
+
+    def _get_contacts(self, request: Request):
+        self.db.save_contacts(request.data)
+        self.contacts_fetch = True
+
+    def get_history(self):
+        request = Request(
+            action=settings.Action.messages,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user
+        )
+        self.send_request(request)
+
+    def _get_history(self, request: Request):
+        self.db.save_messages(request)
+        self.messages_fetch = True
+
+    def get_server_data(self):
+        if self.auth_error:
+            return
+
+        self.get_contacts()
+        while not self.contacts_fetch and not self.auth_error:
+            sleep(0.1)
+
+        if self.auth_error:
+            return
+
+        self.get_history()
+        while not self.messages_fetch and not self.auth_error:
+            sleep(0.1)
+
+        if self.auth_error:
+            return
+
+        self.initialize()
+
+    def initialize(self):
+        contacts = self.db.get_contacts()
+        messages = self.db.get_messages()
+
+        for contact in contacts:
+            self.chat[contact.login] = {
+                'new': deque(),
+                'was_read': deque([
+                    Request(
+                        action=settings.Action.msg,
+                        time=x.date.strftime(settings.DATE_FORMAT),
+                        data=Message(
+                            to=x.contact.login if x.kind == 'outbox' else self.user.login,
+                            from_=x.contact.login if x.kind == 'inbox' else self.user.login,
+                            encoding='utf-8',
+                            message=x.text,
+                            date=x.date.strftime(settings.DATE_FORMAT),
+                        ),
+                    ) for x in messages if x.contact.login == contact.login
+                ])
+            }
+        self.gui.initialized.emit()
+
+    def find_contact(self, login):
+        request = Request(
+            action=settings.Action.search,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user,
+            data=login
+        )
+        self.send_request(request)
+
+    def _find_contact(self, request: Request):
+        self.found_contacts = {x.login: x for x in request.data}
+        self.gui.find_contact.emit(request.data)
+
+    def add_contact(self, login: str):
+
+        contact = self.found_contacts.get(login)
+
+        request = Request(
+            action=settings.Action.add_chat,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user,
+            data=contact,
+        )
+        self.send_request(request)
+
+    def _add_contact(self, request: Request):
+
+        contact = request.data
+
+        try:
+            self.db.save_contact(contact)
+        except AlreadyExist:
+            ...
+
+        if contact.login not in self.chat.keys():
+            self.chat[contact.login] = {}
+            self.chat[contact.login]['new'] = deque()
+            self.chat[contact.login]['was_read'] = deque()
+
+        self.gui.add_contact.emit()
+
+    def save_message(self, request: Request, kind: str):
+        self.db.save_message(request, kind)
+
+    def save_contact(self, contact: User):
+        self.db.save_contact(contact)
+
+    def message(self, text: str, recipient: str):
         """Get outbox message from queue and send it to server"""
 
-        while self.is_connected:
-            
-            request = self.outbox.get(block=True)
-            result = self.send_request(
-                request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
-            if not result:
-                self.is_connected = False
-    
-    @log
-    def notification(self):
-        
-        if self.notify[0] and self.notify[1].endswith("not connected"):
-            print(self.notify[1])
-            
-        elif self.action and self.notify[0] and self.action != self.notify[1]:
-            print(f'New message from {self.notify[1]}')
-    
-    @log
-    def get_outbox_message(self, to: str):
-        """Get message from user and put it to queue for send"""
-        
-        if self.is_connected:
-            contact = self.get_contact(to)
-    
-            os.system('clear')
-            print(f'Chat with {to}. (input < /exit > for back to chat list)')
-            self.chat_stop = False
-            
-            chat_history = Thread(target=self.print_message_to_chat, name='chat', kwargs={'from_': self.action},
-                                  daemon=True)
-            chat_history.start()
-            
-            while self.is_connected:
-    
-                text = input()
-                if text == '/exit':
-                    self.action = None
-                    self.chat_stop = True
-                    self.to_print = True
-                    break
-                
-                elif not len(text) or len(text) > 300:
-                    continue
-                
-                self.lock.acquire()
-                
-                message = Message(to=to, from_=self.user.login, message=text)
-                request = Request(
-                    action=settings.Action.msg,
-                    time=datetime.now().strftime(settings.DATE_FORMAT),
-                    user=self.user,
-                    data=message
-                )
-                self.outbox.put(request)
-                contact['was_read'].append(request)
-                self.to_print = True
-                
-                self.lock.release()
-            
-            chat_history.join()
-    
-    @log
-    def get_message_from_queue(self):
-        """Get message from inbox queue and put it to chat dictionary sort by 'from' username"""
+        request = Request(
+            action=settings.Action.msg,
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            user=self.user,
+            data=Message(
+                to=recipient,
+                from_=self.user.login,
+                message=text,
+                date=datetime.now().strftime(settings.DATE_FORMAT)
+            )
+        )
+        self.send_request(request)
+        self.save_message(request, 'outbox')
+        self.chat.get(recipient)['was_read'].append(request)
 
-        new: Request
+    def _message(self, request: Request):
 
-        while self.is_connected:
-            
-            if self.inbox.empty():
-                continue
-            
-            self.lock.acquire()
-            
-            new = self.inbox.get(block=True)
-            
-            if isinstance(new.data, str):
-                chat_name = new.data.replace('User ', '').replace(' not connected', '')
-                user = new.data
-                self.chat.pop(chat_name)
-                
-            else:
-                user = new.data.from_
-                contact = self.get_contact(user)
-                contact['new'].put(new)
-                
-            self.notify = (True, user)
-            self.to_print = True
-            self.notification()
-            
-            self.lock.release()
-    
-    @log
-    def print_message_to_chat(self, from_: str):
-        """When in chat - prints all new messages and transfer it to 'was read' list"""
-        mess: Request
-        new_mess: Request
+        self.save_message(request, 'inbox')
+        contact = self.chat.get(request.user.login, None)
 
-        contact = self.get_contact(from_)
-        
-        for mess in contact['was_read']:
-            print(f"{mess.time} {mess.data.from_}: {mess.data.message}")
-            
-        while not self.chat_stop and self.is_connected:
-            
-            while not contact['new'].empty():
-                
-                with self.lock:
-                    new_mess = contact['new'].get(block=True)
-                    print(f"{new_mess.time} {from_}: {new_mess.data.message}")
-                    contact['was_read'].append(new_mess)
-                    self.to_print = True
-    
-    @log
-    def print_menu(self):
-        """When no action (user not in chat) - printing menu"""
-        
-        while not self.action and self.is_connected:
-            
-            if self.to_print:
-                
-                self.lock.acquire()
-                
-                rows = ''
-                for username, contact in self.chat.items():
-                    new_mess = contact['new'].qsize()
-                    row = f"{username} ({new_mess})"
-                    rows += row + '\n'
-                if rows == '':
-                    rows = 'No active chats\n'
-                menu = f"{rows}\ninput username for chat with (if user not in list - will start new one)" \
-                       f"\ntype < /exit > for Exit\n"
-                os.system('clear')
-                print(menu)
-                self.to_print = False
-                
-                self.lock.release()
-    
-    @log
-    def run(self):
-        
-        send = Thread(target=self.send_message, name='send', daemon=True)
-        receive = Thread(target=self.receive_message, name='receive', daemon=True)
-        check_inbox = Thread(target=self.get_message_from_queue, name='check_inbox', daemon=True)
-        send.start()
-        sleep(0.3)
-        receive.start()
-        sleep(0.3)
-        check_inbox.start()
-        
-        while self.is_connected:
-            menu = Thread(target=self.print_menu, name='menu', daemon=True)
-            menu.start()
-            self.action = input()
-            if self.action == "/exit":
-                self.is_connected = False
-                break
-            self.get_outbox_message(to=self.action)
-            menu.join()
-   
-            
-@log
-def main():
-    while True:
-        option = 0
-        while option not in ('1', '2'):
-            os.system('clear')
-            option = input('1. Login/Register\n2. Quit\nInput option: ')
-        option = int(option)
-        
-        if option == 2:
-            for i in range(1, 6, 1):
-                print(f'\rExiting{"." * i}', end='')
-                sleep(0.7)
-            print()
-            exit(0)
-            
-        elif option == 1:
-            os.system('clear')
-            action = input('1. Login\n2. Register\nInput option: ')
-
-            with TCPSocketClient(host=cl_host, port=cl_port) as client:
-                os.system('clear')
-                client.connect()
-                if client.is_connected:
-                    result = ''
-                    while result != 'success' and result != 'exit':
-
-                        if action == '1':
-                            result, action = client.auth(settings.Action.auth)
-                        elif action == '2':
-                            result, action = client.auth(settings.Action.register)
-                    if result == 'exit':
-                        for i in range(1, 6, 1):
-                            print(f'\rExiting{"." * i}', end='')
-                            sleep(0.7)
-                        print()
-                        exit(0)
-
-                    try:
-                        client.run()
-                        print('Disconnected from server (press <Enter> to continue)')
-                        input()
-                    except KeyboardInterrupt:
-                        os.system('clear')
-                        print('Disconnected from server (press <Enter> to continue)')
-                        input()
-                        exit(1)
-                else:
-                    print('Connection failed (press <Enter> to continue)')
-                    input()
-            del client
-            
-        else:
-            continue
-            
-
-if __name__ == '__main__':
-
-    cl_host, cl_port = get_cmd_arguments(cmd_line_args=sys.argv[1:])
-    if cl_host == '':
-        print("Не задан адрес сервера")
-        exit(1)
-    main()
+        contact['new'].append(request)
+        self.gui.new_message.emit(request.user.login)

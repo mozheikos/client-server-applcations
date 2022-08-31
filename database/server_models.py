@@ -1,10 +1,10 @@
 import sqlalchemy.exc
-from sqlalchemy import Column, ForeignKey
-from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME
+from sqlalchemy import Column, ForeignKey, Boolean
+from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
 
-from database.core import Base
+Base = declarative_base()
 
 
 class Client(Base):
@@ -22,18 +22,6 @@ class Client(Base):
         uselist=True
     )
 
-    # sent_messages = relationship(
-    #     'MessageHistory',
-    #     back_populates='sender',
-    #     uselist=True
-    # )
-    #
-    # received_messages = relationship(
-    #     'MessageHistory',
-    #     back_populates='recipient',
-    #     uselist=True
-    # )
-
 
 class ClientHistory(Base):
     __tablename__ = 'clients_history'
@@ -50,6 +38,26 @@ class ClientHistory(Base):
     )
 
 
+class Chat(Base):
+    __tablename__ = 'chats'
+
+    id = Column(INTEGER, primary_key=True)
+    init_id = Column(INTEGER, ForeignKey('clients.id', ondelete='CASCADE'), nullable=False)
+    other_id = Column(INTEGER, ForeignKey('clients.id', ondelete='CASCADE'), nullable=False)
+
+    init = relationship(
+        Client,
+        foreign_keys=[init_id],
+        uselist=False
+    )
+
+    other = relationship(
+        Client,
+        foreign_keys=[other_id],
+        uselist=False
+    )
+
+
 class MessageHistory(Base):
     __tablename__ = 'messages'
 
@@ -58,6 +66,7 @@ class MessageHistory(Base):
     recipient_id = Column(INTEGER, ForeignKey('clients.id', onupdate='CASCADE', ondelete='SET NULL'))
     date = Column(DATETIME, nullable=False)
     content = Column(VARCHAR, nullable=False)
+    sent = Column(BOOLEAN)
 
     sender = relationship(
         Client,
