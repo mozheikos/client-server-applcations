@@ -1,7 +1,10 @@
 import datetime
+import json
 from select import select
 from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM, SHUT_RDWR
-from typing import List
+from typing import List, Tuple
+
+import rsa
 
 from common.config import settings
 from databases import ServerDatabase
@@ -59,6 +62,7 @@ class TCPSocketServer(BaseTCPSocket):
     request_handler = None
     connected = []
     connected_users = {}
+    public_keys = {}
 
     @log
     def __init__(
@@ -80,6 +84,7 @@ class TCPSocketServer(BaseTCPSocket):
         """
         super(TCPSocketServer, self).__init__(host, port, buffer)
 
+        self._public, self._private = self.__generate_keys()
         self.gui = None
         self.request_handler = handler
         self.database = ServerDatabase()
@@ -90,6 +95,10 @@ class TCPSocketServer(BaseTCPSocket):
         
         if bind_and_listen:
             self.bind_and_listen()
+
+    @staticmethod
+    def __generate_keys() -> Tuple[rsa.PublicKey, rsa.PrivateKey]:
+        return rsa.newkeys(512, poolsize=16)
     
     @log
     def bind_and_listen(self) -> None:
@@ -103,10 +112,10 @@ class TCPSocketServer(BaseTCPSocket):
         self.connected.append(self.connection)
     
     def accept_connection(self):
-        # Сделал немного иначе, без таймаута. При инициализации положил серверный сокет в список сокетов и проверяю в
-        # селекте, если он готов для чтения - вызываю accept
+
         client, address = self.connection.accept()
         self.connected.append(client)
+        client.send(json.dumps([self._public.n, self._public.e]).encode(settings.DEFAULT_ENCODING))
         self.gui.console_log.emit(f"{address[0]} connected")
 
     def serve(self):
@@ -144,5 +153,5 @@ class TCPSocketServer(BaseTCPSocket):
                 break
 
     def handle_request(self, client, writable):
-        handler = self.request_handler(client, self, writable, self.database)
+        handler = self.request_handler(client, self, writable, self.database, self._public, self._private)
         handler.handle_request()

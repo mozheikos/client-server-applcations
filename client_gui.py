@@ -26,6 +26,8 @@ class ClientUI(QMainWindow):
     find_contact = QtCore.pyqtSignal(list)
     add_contact = QtCore.pyqtSignal()
     new_message = QtCore.pyqtSignal(str)
+    auth_error = QtCore.pyqtSignal()
+    initialized = QtCore.pyqtSignal()
 
     def __init__(self):
         super(ClientUI, self).__init__()
@@ -43,7 +45,7 @@ class UI(Ui_MainWindow):
     def __init__(self, client: TCPSocketClient, application: ClientUI):
         self.application = application
         self.client = client
-        self.receive = Thread(target=client.receive, name='client', daemon=True)
+        self.receive = None
 
     def setupUi(self, _):
         super(UI, self).setupUi(self.application)
@@ -67,6 +69,8 @@ class UI(Ui_MainWindow):
         self.application.user_logged_in.connect(self.client_login_ok)
         self.application.user_wrong_creds.connect(self.client_login_wrong)
         self.application.user_register_error.connect(self.client_register_error)
+        self.application.auth_error.connect(self.authorization_error)
+        self.application.initialized.connect(self.initialize_ok)
 
         # render messages and contacts
         self.contacts.doubleClicked.connect(self.render_messages)
@@ -76,6 +80,15 @@ class UI(Ui_MainWindow):
         self.application.add_contact.connect(self.render)
         self.application.new_message.connect(self.new_message)
         self.send.clicked.connect(self.send_message)
+
+    def authorization_error(self):
+        self.receive.join(timeout=1)
+        self.button_connect.setEnabled(True)
+        self.reg_log_dialog.hide()
+        self.contacts.clear()
+        self.message_box.hide()
+        self.send.hide()
+        self.message.hide()
 
     def send_message(self):
         text = self.message.text()
@@ -151,9 +164,11 @@ class UI(Ui_MainWindow):
             self.button_connect.setEnabled(True)
             self.client.is_connected = False
             self.receive.join(timeout=1)
+            self.receive = None
 
     def client_connect(self):
         self.client.connect()
+        self.receive = Thread(target=self.client.receive, name='client', daemon=True)
         self.receive.start()
 
     def client_login_dialog(self):
@@ -170,6 +185,8 @@ class UI(Ui_MainWindow):
                 self.client.login(login, passwd_1, True)
             else:
                 self.reg_error.setText("password and confirm dont match")
+        else:
+            self.client_close_window()
 
     def client_register_error(self, text: str):
         self.reg_error.setText(text)
@@ -177,8 +194,10 @@ class UI(Ui_MainWindow):
     def client_login_ok(self):
         self.reg_log_dialog.hide()
         self.client.get_server_data()
-        while not self.client.initialized:
-            sleep(0.1)
+        # while not self.client.initialized:
+        #     sleep(0.1)
+
+    def initialize_ok(self):
         self.username.setText(self.client.user.login)
         self.render()
 

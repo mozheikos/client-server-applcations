@@ -16,3 +16,11 @@ class StopSendingError(Exception):
 
 class NotExist(Exception):
     pass
+
+
+class NotKeyError(Exception):
+    pass
+
+
+class NotAuthorised(Exception):
+    pass
