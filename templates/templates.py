@@ -1,18 +1,26 @@
-from typing import Optional, Union, List, Deque
 from socket import socket
+from typing import Optional, Union, List, Deque
 
 from pydantic import BaseModel
 
-from common.config import Action, Status
+from common.config import settings
 
 
 class Base(BaseModel):
     class Config:
         arbitrary_types_allowed = True
-        max_anystr_length = 300
+        max_anystr_length = 1200
         error_msg_templates = {
             'value_error.any_str.max_length': 'max length: {limit_value}'
         }
+
+
+class User(Base):
+    id: Optional[int]
+    login: str
+    password: Optional[str]
+    verbose_name: Optional[str]
+    token: Optional[str]
 
 
 class Message(Base):
@@ -20,33 +28,26 @@ class Message(Base):
     from_: str
     encoding: str = 'utf-8'
     message: str
-
-
-class User(Base):
-    account_name: str
-    password: Optional[str]
-    status: Optional[str]
+    date: Optional[str]
 
 
 class Request(Base):
-    action: Action
+    status: Optional[settings.Status]
+    action: settings.Action
     time: str
     type: Optional[str]
     user: Optional[User]
-    data: Optional[Union[str, Message]]
+    data: Optional[Union[Message, User, str, List[User], List[Message], List[int]]]
 
 
-class Response(Base):
-    response: Status
-    time: str
-    alert: Optional[str]
+class Encrypted(Base):
+    payload: bytes
+    key: bytes
 
 
-# Пользовательский сокет сохраняю в виде списка, чтобы (ТЕОРЕТИЧЕСКИ) можно было подключиться с 2 устройств к одному
-# аккаунту (пока пароль проверять не буду, но будет база - по паролю и будем решать: добавлять новый сокет в список или
-# это нарушитель
-class Client(Base):
+class ConnectedUser(Base):
     user: User
-    sock: List[socket]
+    sock: socket
     data: Deque[Union[str, Request]]
+    token: str
     

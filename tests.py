@@ -3,7 +3,7 @@ from unittest import TestCase, main
 
 from client import TCPSocketClient
 from templates.templates import Request
-from common.config import Action
+from common.config import settings
 from common.utils import get_cmd_arguments
 
 """
@@ -80,7 +80,7 @@ class TestClient(TestCase):
     
     def test_get_presence(self):
         presence = Request.parse_raw(self.client_socket.get_presence())
-        self.assertEqual(presence.action, Action.presence)
+        self.assertEqual(presence.action, settings.Action.presence)
     
     def test_send_request(self):
         action = 'presence'

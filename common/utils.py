@@ -1,10 +1,25 @@
-from common.config import HOST, PORT
+from common.config import settings
+import hashlib
+
+
+def get_hashed_password(password: str) -> str:
+    salt = hashlib.sha256(settings.SALT.encode()).hexdigest()
+
+    return hashlib.sha256((salt + password).encode()).hexdigest()
+
+
+def generate_session_token(username: str) -> str:
+    """Generate session token"""
+
+    salt = hashlib.sha256("salt".encode()).hexdigest()
+    token = hashlib.sha256((salt + username).encode()).hexdigest()
+    return token
 
 
 def get_cmd_arguments(cmd_line_args: list) -> tuple:
     arguments = {
-        '-h': HOST,
-        '-p': PORT
+        '-h': settings.HOST,
+        '-p': settings.PORT
     }
 
     # Получаем именованные параметры командной строки, присваиваем соответствующим значениям arguments

@@ -4,9 +4,9 @@ from logging import handlers
 import sys
 from pathlib import Path
 
-from common.config import DEBUG
+from common.config import settings
 
-stdout_level = logging.DEBUG if DEBUG else logging.INFO
+stdout_level = logging.DEBUG if settings.DEBUG else logging.INFO
 PATH = Path(__file__).resolve().parent.parent
 if 'log_journal' not in os.listdir(PATH):
     os.mkdir(f"{PATH}/log_journal")

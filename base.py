@@ -1,11 +1,16 @@
 import datetime
+import json
 from select import select
 from socket import socket, AddressFamily, SocketKind, AF_INET, SOL_SOCKET, SO_REUSEADDR, SOCK_STREAM, SHUT_RDWR
-from typing import List
+from typing import List, Tuple
 
-from common.config import HOST, PORT, BUFFER_SIZE, Action, DEFAULT_ENCODING
-from templates.templates import Request
+import rsa
+
+from common.config import settings
+from databases import ServerDatabase
 from decorators import log
+from templates.templates import Request
+
 """Решил что вот так будет совсем красиво. Сервер и клиент изначально представляют собой одно и то же - сокет, поэтому
 часть параметров у них общая и часть методов класса соответственно тоже (создание объекта сокета, установка некоторых
 параметров. Поэтому все общее я решил вынести в базовый класс"""
@@ -13,13 +18,13 @@ from decorators import log
 
 class BaseTCPSocket:
 
-    host: str = HOST
-    port: int = PORT
+    host: str = settings.HOST
+    port: int = settings.PORT
     
     address_family: AddressFamily = AF_INET
     socket_type: SocketKind = SOCK_STREAM
     
-    buffer_size: int = BUFFER_SIZE
+    buffer_size: int = settings.BUFFER_SIZE
     
     connection: socket = None
     
@@ -57,7 +62,8 @@ class TCPSocketServer(BaseTCPSocket):
     request_handler = None
     connected = []
     connected_users = {}
-    
+    public_keys = {}
+
     @log
     def __init__(
             self,
@@ -66,7 +72,7 @@ class TCPSocketServer(BaseTCPSocket):
             port: int = None,
             buffer: int = None,
             pool_size: int = None,
-            bind_and_listen: bool = True
+            bind_and_listen: bool = True,
     ):
         """Initialize server class
 
@@ -77,15 +83,22 @@ class TCPSocketServer(BaseTCPSocket):
             pool_size (int): listening queue size
         """
         super(TCPSocketServer, self).__init__(host, port, buffer)
-        
+
+        self._public, self._private = self.__generate_keys()
+        self.gui = None
         self.request_handler = handler
-        
+        self.database = ServerDatabase()
+
         if pool_size:
             assert isinstance(pool_size, int), "Variable 'pool_size' must be int"
             self.pool_size = pool_size
         
         if bind_and_listen:
             self.bind_and_listen()
+
+    @staticmethod
+    def __generate_keys() -> Tuple[rsa.PublicKey, rsa.PrivateKey]:
+        return rsa.newkeys(512, poolsize=16)
     
     @log
     def bind_and_listen(self) -> None:
@@ -99,14 +112,15 @@ class TCPSocketServer(BaseTCPSocket):
         self.connected.append(self.connection)
     
     def accept_connection(self):
-        # Сделал немного иначе, без таймаута. При инициализации положил серверный сокет в список сокетов и проверяю в
-        # селекте, если он готов для чтения - вызываю accept
+
         client, address = self.connection.accept()
         self.connected.append(client)
-        print(f"{address[0]} connected")
-    
-    @log
+        client.send(json.dumps([self._public.n, self._public.e]).encode(settings.DEFAULT_ENCODING))
+        self.gui.console_log.emit(f"{address[0]} connected")
+
     def serve(self):
+        self.gui.console_log.emit(f'Serving at {self.host}:{self.port}')
+
         write = []
         while True:
             try:
@@ -126,20 +140,18 @@ class TCPSocketServer(BaseTCPSocket):
                     if sock is self.connection:
                         continue
                     request = Request(
-                        action=Action.server_shutdown,
-                        time=datetime.datetime.now().isoformat()
+                        action=settings.Action.server_shutdown,
+                        time=datetime.datetime.now().strftime(settings.DATE_FORMAT)
                     )
                     try:
-                        sock.send(request.json(exclude_none=True).encode(DEFAULT_ENCODING))
+                        sock.send(request.json(exclude_none=True).encode(settings.DEFAULT_ENCODING))
                         sock.close()
                     except OSError:
                         continue
                 self.connection.shutdown(SHUT_RDWR)
                 self.shutdown()
                 break
-            
-    @log
+
     def handle_request(self, client, writable):
-        handler = self.request_handler(client, self, writable)
+        handler = self.request_handler(client, self, writable, self.database, self._public, self._private)
         handler.handle_request()
-        
