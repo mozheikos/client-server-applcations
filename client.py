@@ -1,9 +1,12 @@
+import json
 from collections import deque
 from datetime import datetime
 from queue import Queue
-from threading import Lock
 from time import sleep
-from typing import Optional, Callable, Dict
+from typing import Optional, Callable, Dict, Tuple
+
+import rsa
+from cryptography.fernet import Fernet
 
 from base import BaseTCPSocket
 from common.config import settings
@@ -21,12 +24,7 @@ class TCPSocketClient(BaseTCPSocket):
     
     inbox = Queue()
     outbox = Queue()
-    action = None
-    chat_stop = False
     chat: Dict[str, Dict[str, deque]] = {}
-    lock = Lock()
-    to_print = True
-    notify = (False, '')
     found_contacts = {}
 
     @log
@@ -37,14 +35,20 @@ class TCPSocketClient(BaseTCPSocket):
             buffer: int = None,
             connect: bool = False
     ):
-        
+
         super(TCPSocketClient, self).__init__(host, port, buffer)
+        self.__pubkey, self.__privkey = self.__generate_keys()
         self.db: Optional[ClientDatabase] = None
         self.contacts_fetch = False
         self.messages_fetch = False
-        self.initialized = False
+        self.auth_error = False
+        self.server_key: Optional[rsa.PublicKey] = None
         if connect:
             self.connect()
+
+    @staticmethod
+    def __generate_keys() -> Tuple[rsa.PublicKey, rsa.PrivateKey]:
+        return rsa.newkeys(512, poolsize=16)
 
     def get_handler(self, action) -> Callable:
         methods = {
@@ -63,16 +67,30 @@ class TCPSocketClient(BaseTCPSocket):
 
         while self.is_connected:
 
-            received = self.connection.recv(self.buffer_size)
-            if not received:
+            data = self.connection.recv(self.buffer_size)
+            if not data:
+                continue
+
+            try:
+                received = self._decrypt(data)
+            except rsa.pkcs1.DecryptionError:
                 continue
 
             request: Request = Request.parse_raw(received)
 
-            handler = self.get_handler(request.action)
-            assert handler, 'Action not allowed'
+            if request.status == settings.Status.unauthorized:
+                self.is_connected = False
+                self._connect()
+                self._authorization_error()
+            else:
+                handler = self.get_handler(request.action)
+                assert handler, 'Action not allowed'
 
-            handler(request)
+                handler(request)
+
+    def _authorization_error(self):
+        self.auth_error = True
+        self.gui.auth_error.emit()
 
     def quit(self):
         request = Request(
@@ -80,13 +98,8 @@ class TCPSocketClient(BaseTCPSocket):
             time=datetime.now().strftime(settings.DATE_FORMAT),
             user=self.user if hasattr(self, 'user') else None
         )
-
-        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
         self.is_connected = False
-
-    def shutdown(self):
-        # self.quit()
-        self.connection.close()
 
     def connect(self):
         try:
@@ -94,16 +107,44 @@ class TCPSocketClient(BaseTCPSocket):
         except Exception as e:
             raise e
         else:
+            key = json.loads(self.connection.recv(self.buffer_size).decode(settings.DEFAULT_ENCODING))
+            self.server_key = rsa.PublicKey(*key)
             self.is_connected = True
             self.presence()
+
+    def _decrypt(self, request: bytes) -> bytes:
+        length = 64  # length of fernet key, encoded with rsa
+        decoded_key, payload = request[:length], request[length:]
+
+        cipher = rsa.decrypt(decoded_key, self.__privkey)
+
+        cipher_key = Fernet(cipher)
+        data = cipher_key.decrypt(payload)
+        return data
+
+    def _encrypt(self, request: Request) -> bytes:
+
+        cipher = Fernet.generate_key()
+        cipher_key = Fernet(cipher)
+
+        encoded_data = cipher_key.encrypt(
+            request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
+        )
+        encoded_key = rsa.encrypt(cipher, self.server_key)
+
+        return encoded_key + encoded_data
+
+    def send_request(self, request: Request):
+        self.connection.send(self._encrypt(request))
 
     def presence(self):
 
         request = Request(
             action=settings.Action.presence,
-            time=datetime.now().strftime(settings.DATE_FORMAT)
+            time=datetime.now().strftime(settings.DATE_FORMAT),
+            data=[self.__pubkey.n, self.__pubkey.e]
         )
-        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
 
     def _presence(self, request: Request):
         if request.status == settings.Status.ok:
@@ -126,7 +167,7 @@ class TCPSocketClient(BaseTCPSocket):
                 password=passwd
             )
         )
-        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
 
     def _login(self, request: Request):
 
@@ -134,8 +175,10 @@ class TCPSocketClient(BaseTCPSocket):
             self.user = User(
                 id=request.data.id,
                 login=request.data.login,
-                verbose_name=request.data.verbose_name
+                verbose_name=request.data.verbose_name,
+                token=request.data.token
             )
+            self.auth_error = False
             self.gui.user_logged_in.emit()
         else:
             self.gui.user_wrong_creds.emit(request.data)
@@ -146,7 +189,7 @@ class TCPSocketClient(BaseTCPSocket):
             time=datetime.now().strftime(settings.DATE_FORMAT),
             user=self.user
         )
-        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
 
     def _get_contacts(self, request: Request):
         self.db.save_contacts(request.data)
@@ -158,19 +201,30 @@ class TCPSocketClient(BaseTCPSocket):
             time=datetime.now().strftime(settings.DATE_FORMAT),
             user=self.user
         )
-        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
 
     def _get_history(self, request: Request):
         self.db.save_messages(request)
         self.messages_fetch = True
 
     def get_server_data(self):
+        if self.auth_error:
+            return
+
         self.get_contacts()
-        while not self.contacts_fetch:
+        while not self.contacts_fetch and not self.auth_error:
             sleep(0.1)
+
+        if self.auth_error:
+            return
+
         self.get_history()
-        while not self.messages_fetch:
+        while not self.messages_fetch and not self.auth_error:
             sleep(0.1)
+
+        if self.auth_error:
+            return
+
         self.initialize()
 
     def initialize(self):
@@ -194,7 +248,7 @@ class TCPSocketClient(BaseTCPSocket):
                     ) for x in messages if x.contact.login == contact.login
                 ])
             }
-        self.initialized = True
+        self.gui.initialized.emit()
 
     def find_contact(self, login):
         request = Request(
@@ -203,7 +257,7 @@ class TCPSocketClient(BaseTCPSocket):
             user=self.user,
             data=login
         )
-        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
 
     def _find_contact(self, request: Request):
         self.found_contacts = {x.login: x for x in request.data}
@@ -219,7 +273,7 @@ class TCPSocketClient(BaseTCPSocket):
             user=self.user,
             data=contact,
         )
-        self.connection.send(request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
 
     def _add_contact(self, request: Request):
 
@@ -257,9 +311,7 @@ class TCPSocketClient(BaseTCPSocket):
                 date=datetime.now().strftime(settings.DATE_FORMAT)
             )
         )
-
-        self.connection.send(
-            request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+        self.send_request(request)
         self.save_message(request, 'outbox')
         self.chat.get(recipient)['was_read'].append(request)
 

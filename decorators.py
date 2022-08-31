@@ -1,8 +1,11 @@
 import traceback
+from typing import Callable
 
 import pydantic
 
+from exceptions import NotAuthorised
 from log.logger import logger
+from templates.templates import Request
 
 
 def log(func):
@@ -36,4 +39,33 @@ def log(func):
         else:
             return result
             
+    return wrapper
+
+
+def login_required(f: Callable) -> Callable:
+
+    def wrapper(*args, **kwargs):
+
+        self = args[0]
+
+        print(self.message.user.login)
+
+        user = self.server.connected_users.get(self.message.user.login)
+        if user:
+            token = user.token
+
+            user_token = self.message.user.token
+            print(token, user_token)
+            if token != user_token:
+                raise NotAuthorised
+
+            try:
+                result = f(*args, **kwargs)
+            except Exception as e:
+                raise e
+            else:
+                return result
+        else:
+            raise NotAuthorised
+
     return wrapper
