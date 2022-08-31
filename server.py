@@ -12,7 +12,6 @@ from common.utils import get_hashed_password
 from databases import ServerDatabase
 from decorators import log
 from exceptions import AlreadyExist, NotExist
-from server_ui import Ui_MainWindow
 from templates.templates import Request, ConnectedUser, User, Message
 
 
@@ -25,7 +24,6 @@ class RequestHandler:
         self.server = server
         self.clients = clients
         self.db = database
-        self.gui: Optional[Ui_MainWindow] = None
 
     @log
     def get_method(self):
@@ -39,9 +37,17 @@ class RequestHandler:
             settings.Action.contacts: self.__handle_contacts,
             settings.Action.search: self.__search,
             settings.Action.add_chat: self.__add_contact,
-            settings.Action.del_chat: self.__del_contact
+            settings.Action.del_chat: self.__del_contact,
+            settings.Action.messages: self.__handle_messages
         }
         return methods.get(self.message.action)
+
+    def __handle_messages(self):
+        messages = self.db.get_message_history(self.message.user)
+        status = settings.Status.ok
+        action = settings.Action.messages
+        alert = messages
+        self.__send_response(status, alert, action)
 
     def __handle_contacts(self):
         user = self.message.user
@@ -54,7 +60,7 @@ class RequestHandler:
 
     def __handle_quit(self):
         address, port = self.request.getpeername()
-        print(f"User {address}:{port} disconnected")
+        self.server.gui.console_log.emit(f"User {address}:{port} disconnected")
         self.server.gui.user_disconnected.emit((address, str(port)))
         self.__close_request()
 
@@ -73,9 +79,12 @@ class RequestHandler:
         else:
             self.__handle_auth()
 
-    @log
     def __send_response(
-            self, status: settings.Status, alert: Union[Message, User, str, List[User]], action: settings.Action):
+            self,
+            status: settings.Status,
+            alert: Union[Message, User, str, List[User], List[Message]],
+            action: settings.Action
+    ):
 
         response = Request(
             status=status,
@@ -86,32 +95,36 @@ class RequestHandler:
         )
         
         self.request.send(response.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
-        print(f"Response {self.request.getpeername()[0]} - {response.status}")
+        self.server.gui.console_log.emit(f"Response {self.request.getpeername()[0]} - {response.status}")
 
     def __search(self):
-        try:
-            response = self.db.search(self.message.data.login)
-            user = User(
-                id=response.id,
-                login=response.login,
-                verbose_name=response.verbose_name
-            )
-        except NotExist:
-            status = settings.Status.bad_request
-            action = settings.Action.search
-            alert = f"User {self.message.data} not exist"
-            self.__send_response(status, alert, action)
-        else:
-            status = settings.Status.ok
-            action = settings.Action.search
-            alert = user
-            self.__send_response(status, alert, action)
+        response = self.db.search(self.message.data)
+        self.__send_response(settings.Status.ok, response, settings.Action.search)
 
     def __add_contact(self):
-        self.db.create_chat(self.message.user, self.message.data)
+
+        try:
+            self.db.create_chat(self.message.user, self.message.data)
+        except AlreadyExist:
+            ...
+
+        to_send = self.server.connected_users.get(self.message.data.login, None)
+        if to_send:
+            request = Request(
+                status=settings.Status.ok,
+                action=settings.Action.add_chat,
+                time=datetime.now().strftime(settings.DATE_FORMAT),
+                type='request',
+                data=self.message.user
+            )
+
+            to_send.sock.send(
+                request.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING)
+            )
+
         status = settings.Status.ok
         action = settings.Action.add_chat
-        alert = 'Success'
+        alert = self.message.data
         self.__send_response(status, alert, action)
 
     def __del_contact(self):
@@ -132,7 +145,6 @@ class RequestHandler:
         self.server.gui.user_connected.emit({'ip': ip[0], 'port': str(ip[1]), 'date': date})
         self.__send_response(settings.Status.ok, 'Success', settings.Action.presence)
 
-    @log
     def __handle_auth(self):
         """Presense присылает логопасс. Функция проверяет существование пользователя и его пароль"""
         user = self.db.get_user(self.message.user.login)
@@ -148,37 +160,27 @@ class RequestHandler:
                 self.message.user.login,
                 ConnectedUser(
                     user=self.message.user,
-                    sock=[],
+                    sock=self.request,
                     data=deque()
                 )
-            ).sock.append(self.request)
+            )
             status = settings.Status.ok
             alert = User(id=user.id, login=user.login, verbose_name=user.verbose_name)
 
         self.__send_response(status=status, alert=alert, action=settings.Action.auth)
-    
-    @log
-    def __handle_message(self):
-        # ПЕРЕДЕЛАТЬ!!! С учетом хранения списка контактов на клиенте (можно отправлять сообщения по id)
 
+    def __handle_message(self):
         recipient = self.message.data.to
         to_send = self.server.connected_users.get(recipient, None)
 
         if to_send:
-            for sock in to_send.sock:
-                if sock in self.clients:
-                    sock.send(
-                        self.message.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
+            self.db.create_message(self.message.data, True)
+            to_send.sock.send(
+                self.message.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
                     
         else:
-            response = Request(
-                action=settings.Action.msg,
-                time=datetime.now().strftime(settings.DATE_FORMAT),
-                data=f"User {recipient} not connected"
-            )
-            self.request.send(response.json(exclude_none=True, ensure_ascii=False).encode(settings.DEFAULT_ENCODING))
-    
-    @log
+            self.db.create_message(self.message.data, False)
+
     def __handle_error(self, error: Union[ValidationError, AssertionError, ConnectionError]):
         msg = ''
         if isinstance(error, ValidationError):
@@ -192,8 +194,7 @@ class RequestHandler:
             
         else:
             self.__send_response(settings.Status.bad_request, msg, self.message.action)
-    
-    @log
+
     def handle_request(self):
         try:
             data = self.request.recv(self.server.buffer_size)
@@ -220,8 +221,6 @@ class RequestHandler:
     def __close_request(self):
 
         self.request.close()
-        if self.message.user:
-            client = self.server.connected_users.get(self.message.user.login, None)
-            if client:
-                client.sock.remove(self.request)
+        if self.message and self.message.user:
+            self.server.connected_users.pop(self.message.user.login, None)
         self.server.connected.remove(self.request)

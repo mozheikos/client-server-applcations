@@ -24,8 +24,27 @@
      </rect>
     </property>
     <property name="currentIndex">
-     <number>1</number>
+     <number>0</number>
     </property>
+    <widget class="QWidget" name="console">
+     <attribute name="title">
+      <string>Console</string>
+     </attribute>
+     <widget class="QListWidget" name="console_log">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>801</width>
+        <height>421</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: rgb(211, 215, 207);
+background-color: rgb(0, 0, 0);</string>
+      </property>
+     </widget>
+    </widget>
     <widget class="QWidget" name="admin_connected">
      <attribute name="title">
       <string>Clients</string>
@@ -263,7 +282,7 @@
         <cursorShape>ArrowCursor</cursorShape>
        </property>
        <property name="autoFillBackground">
-        <bool>true</bool>
+        <bool>false</bool>
        </property>
        <property name="frame">
         <bool>false</bool>

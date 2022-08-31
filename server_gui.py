@@ -4,7 +4,7 @@ from threading import Thread
 from typing import Dict
 
 from PyQt5 import QtCore
-from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QApplication, QPushButton
+from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QApplication, QPushButton, QListWidgetItem
 
 from base import TCPSocketServer
 from common.config import settings
@@ -16,6 +16,7 @@ class ServerUI(QMainWindow):
 
     user_connected = QtCore.pyqtSignal(dict)
     user_disconnected = QtCore.pyqtSignal(tuple)
+    console_log = QtCore.pyqtSignal(str)
 
     def __init__(self):
         super(ServerUI, self).__init__()
@@ -28,7 +29,7 @@ class UI(Ui_MainWindow):
         self.server = server
         self.thread = Thread(target=self.server.serve, name='server', daemon=True)
 
-    def setupUi(self, a=0):
+    def setupUi(self, _):
         super(UI, self).setupUi(self.application)
         self.get_server_settings()
         self.host_port_dialog.hide()
@@ -40,8 +41,12 @@ class UI(Ui_MainWindow):
     def set_signals(self):
         self.application.user_connected.connect(self.connected_add_row)
         self.application.user_disconnected.connect(self.connected_delete_row)
+        self.application.console_log.connect(self.console_logging)
         self.admin_edit_conn.clicked.connect(self.edit_connect)
         self.confirm_btns.clicked.connect(self.confirm_settings)
+
+    def console_logging(self, text: str):
+        self.console_log.addItem(QListWidgetItem(text))
 
     def confirm_settings(self, e: QPushButton):
         if e.text() == '&OK':
@@ -105,6 +110,6 @@ if __name__ == '__main__':
     ui = ServerUI()
     admin = UI(srv, ui)
 
-    admin.setupUi()
+    admin.setupUi(ui)
     ui.show()
     sys.exit(app.exec())

@@ -20,14 +20,18 @@ class DatabaseFactory:
         port: Optional[str]
         name: str
 
-        def get_src(self) -> str:
+        def get_src(self, client: str = None) -> str:
+            if client:
+                return f'sqlite+pysqlite:///{client}_database.sqlite3'
+
             if self.dialect == 'sqlite':
                 path = Path(__file__).resolve().parent
                 return f'sqlite+{self.driver}:///{path}/{self.name}'
             else:
                 return f'{self.dialect}+{self.driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}'
 
-    def __init__(self, classname: str):
+    def __init__(self, classname: str, client: str = None):
+        self.__client = client
         self.__name = settings.DATABASE
         self.kind = classname
         if self.kind == 'ClientDatabase':
@@ -50,5 +54,5 @@ class DatabaseFactory:
         :return: Engine
         """
         if self.__creds.dialect == 'sqlite':
-            return create_engine(self.__creds.get_src(), connect_args={"check_same_thread": False})
+            return create_engine(self.__creds.get_src(self.__client), connect_args={"check_same_thread": False})
         return create_engine(self.__creds.get_src())

@@ -11,7 +11,6 @@ class Contact(Base):
     __tablename__ = 'contacts'
 
     id = Column(INTEGER, primary_key=True)
-    owner = Column(VARCHAR)
     login = Column(VARCHAR, unique=True, nullable=False)
     verbose_name = Column(VARCHAR, nullable=False)
 
@@ -27,7 +26,6 @@ class History(Base):
 
     id = Column(INTEGER, primary_key=True)
     contact_id = Column(INTEGER, ForeignKey('contacts.id', ondelete='CASCADE', onupdate='CASCADE'))
-    owner = Column(VARCHAR)
     kind = Column(VARCHAR, nullable=False)
     date = Column(DATETIME, nullable=True)
     text = Column(VARCHAR)
