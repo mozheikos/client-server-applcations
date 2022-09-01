@@ -1,3 +1,7 @@
+"""
+Main functionality of client application
+"""
+
 import json
 from collections import deque
 from datetime import datetime
@@ -15,6 +19,8 @@ from templates.templates import Request, User, Message
 
 
 class TCPSocketClient(BaseTCPSocket):
+    """Class for exchange requests with Server.
+    """
 
     user: User
     gui = None
@@ -30,7 +36,7 @@ class TCPSocketClient(BaseTCPSocket):
             connect: bool = False
     ):
 
-        super(TCPSocketClient, self).__init__(host, port, buffer)
+        super().__init__(host, port, buffer)
         self.__pubkey, self.__privkey = self.__generate_keys()
         self.db: Optional[ClientDatabase] = None
         self.contacts_fetch = False
@@ -42,9 +48,13 @@ class TCPSocketClient(BaseTCPSocket):
 
     @staticmethod
     def __generate_keys() -> Tuple[rsa.PublicKey, rsa.PrivateKey]:
-        return rsa.newkeys(512, poolsize=16)
+        """Generates pair RSA keys"""
+
+        return rsa.newkeys(settings.RSA, poolsize=16)
 
     def get_handler(self, action) -> Callable:
+        """Returns handler method to handle request in router"""
+
         methods = {
             settings.Action.presence: self._presence,
             settings.Action.register: self._register,
@@ -57,7 +67,8 @@ class TCPSocketClient(BaseTCPSocket):
         }
         return methods.get(action, None)
 
-    def receive(self):
+    def receive(self) -> None:
+        """Main request router. Receives request and starts handler if action allowed"""
 
         while self.is_connected:
 
@@ -75,10 +86,10 @@ class TCPSocketClient(BaseTCPSocket):
             if request.status == settings.Status.unauthorized and request.action not in (
                     settings.Action.auth, settings.Action.register
             ):
-
                 self.is_connected = False
                 self._connect()
                 self._authorization_error()
+
             else:
                 handler = self.get_handler(request.action)
                 assert handler, 'Action not allowed'
@@ -86,10 +97,14 @@ class TCPSocketClient(BaseTCPSocket):
                 handler(request)
 
     def _authorization_error(self):
+        """Handler for authorization error. Stops router work and emit signal to GUI"""
+
         self.auth_error = True
         self.gui.auth_error.emit()
 
     def quit(self):
+        """Send message about client disconnecting to server"""
+
         request = Request(
             action=settings.Action.quit,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -99,6 +114,8 @@ class TCPSocketClient(BaseTCPSocket):
         self.is_connected = False
 
     def connect(self):
+        """Connecting to server"""
+
         try:
             self.connection.connect((self.host, self.port))
         except Exception as exception:
@@ -110,8 +127,9 @@ class TCPSocketClient(BaseTCPSocket):
             self.presence()
 
     def _decrypt(self, request: bytes) -> bytes:
-        length = 64  # length of fernet key, encoded with rsa
-        decoded_key, payload = request[:length], request[length:]
+        """Decrypt request"""
+
+        decoded_key, payload = request[:settings.FERNET], request[settings.FERNET:]
 
         cipher = rsa.decrypt(decoded_key, self.__privkey)
 
@@ -120,6 +138,7 @@ class TCPSocketClient(BaseTCPSocket):
         return data
 
     def _encrypt(self, request: Request) -> bytes:
+        """Encrypt request"""
 
         cipher = Fernet.generate_key()
         cipher_key = Fernet(cipher)
@@ -131,10 +150,13 @@ class TCPSocketClient(BaseTCPSocket):
 
         return encoded_key + encoded_data
 
-    def send_request(self, request: Request):
+    def send_request(self, request: Request) -> None:
+        """Send request"""
+
         self.connection.send(self._encrypt(request))
 
-    def presence(self):
+    def presence(self) -> None:
+        """Send presence request"""
 
         request = Request(
             action=settings.Action.presence,
@@ -143,7 +165,9 @@ class TCPSocketClient(BaseTCPSocket):
         )
         self.send_request(request)
 
-    def _presence(self, request: Request):
+    def _presence(self, request: Request) -> None:
+        """Handle presence response"""
+
         if request.status == settings.Status.ok:
             self.gui.connected.emit()
         else:
@@ -151,10 +175,20 @@ class TCPSocketClient(BaseTCPSocket):
             self.shutdown()
             self.is_connected = False
 
-    def _register(self, request: Request):
+    def _register(self, request: Request) -> None:
+        """Emit signal to GUI when registration failed"""
+
         self.gui.user_register_error.emit(request.data)
 
-    def login(self, login: str, passwd: str, register: bool = False):
+    def login(self, login: str, passwd: str, register: bool = False) -> None:
+        """Send login request"""
+
+        # Создаем базу данных именно здесь. Вынужденная мера, связанная с запуском нескольких клиентов
+        # из одной директории (для прверки работы. В таком случае, для избежания коллизий данных,
+        # необходимо создавать отдельную базу для каждого юзера, соответственно узнать ее название можно
+        # только когда юзер введет логин. Можно было реализовать в одной базе, но тогда нужно добавлять
+        # поляво все таблицы, указывающие какому пользователю принадлежит запись, а это дополнительный
+        # фильтр при запросах, что снизит производительность
         self.db = ClientDatabase(login)
         request = Request(
             action=settings.Action.auth if not register else settings.Action.register,
@@ -167,6 +201,7 @@ class TCPSocketClient(BaseTCPSocket):
         self.send_request(request)
 
     def _login(self, request: Request):
+        """Handle login response"""
 
         if request.status == settings.Status.ok:
             self.user = User(
@@ -181,6 +216,8 @@ class TCPSocketClient(BaseTCPSocket):
             self.gui.user_wrong_creds.emit(request.data)
 
     def get_contacts(self):
+        """Send request to fetch servers contact list for user"""
+
         request = Request(
             action=settings.Action.contacts,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -189,10 +226,14 @@ class TCPSocketClient(BaseTCPSocket):
         self.send_request(request)
 
     def _get_contacts(self, request: Request):
+        """Receive users contact list from server and saving it to database"""
+
         self.db.save_contacts(request.data)
         self.contacts_fetch = True
 
     def get_history(self):
+        """Same as get_contacts, dut for message history"""
+
         request = Request(
             action=settings.Action.messages,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -201,10 +242,15 @@ class TCPSocketClient(BaseTCPSocket):
         self.send_request(request)
 
     def _get_history(self, request: Request):
+        """Same as _get_contacts"""
+
         self.db.save_messages(request)
         self.messages_fetch = True
 
     def get_server_data(self):
+        """Initialize routing method. Fetch data about contacts and messages from server and then
+        starts application initialization"""
+
         if self.auth_error:
             return
 
@@ -225,6 +271,8 @@ class TCPSocketClient(BaseTCPSocket):
         self.initialize()
 
     def initialize(self):
+        """Local initialization. Fetch data from local database and put it into application variables"""
+
         contacts = self.db.get_contacts()
         messages = self.db.get_messages()
 
@@ -248,6 +296,8 @@ class TCPSocketClient(BaseTCPSocket):
         self.gui.initialized.emit()
 
     def find_contact(self, login):
+        """Send request to find contact by username"""
+
         request = Request(
             action=settings.Action.search,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -257,10 +307,14 @@ class TCPSocketClient(BaseTCPSocket):
         self.send_request(request)
 
     def _find_contact(self, request: Request):
+        """Handle find response. Put response data in found list of contacts"""
+
         self.found_contacts = {x.login: x for x in request.data}
         self.gui.find_contact.emit(request.data)
 
     def add_contact(self, login: str):
+        """After choosing contact to add, get contact data from founded and send request for
+        adding contact in users contact list"""
 
         contact = self.found_contacts.get(login)
 
@@ -273,6 +327,8 @@ class TCPSocketClient(BaseTCPSocket):
         self.send_request(request)
 
     def _add_contact(self, request: Request):
+        """Handle add contact response. Saves contact to local database, if needed and put it to
+        messenger contacts variable"""
 
         contact = request.data
 
@@ -289,13 +345,17 @@ class TCPSocketClient(BaseTCPSocket):
         self.gui.add_contact.emit()
 
     def save_message(self, request: Request, kind: str):
+        """Save message to database"""
+
         self.db.save_message(request, kind)
 
     def save_contact(self, contact: User):
+        """Save contact to database"""
+
         self.db.save_contact(contact)
 
     def message(self, text: str, recipient: str):
-        """Get outbox message from queue and send it to server"""
+        """Get outbox message from GUI and send it to server"""
 
         request = Request(
             action=settings.Action.msg,
@@ -313,6 +373,7 @@ class TCPSocketClient(BaseTCPSocket):
         self.chat.get(recipient)['was_read'].append(request)
 
     def _message(self, request: Request):
+        """Handle inbox messages. Save message in database and send signal to GUI"""
 
         self.save_message(request, 'inbox')
         contact = self.chat.get(request.user.login, None)

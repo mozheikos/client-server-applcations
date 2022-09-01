@@ -1,3 +1,8 @@
+"""
+Module that define clients GUI logic
+"""
+
+
 import datetime
 from threading import Thread
 from typing import List
@@ -13,6 +18,7 @@ from templates.templates import Request, User
 
 
 class ClientUI(QMainWindow):
+    """Widget class with custom signals definition"""
 
     user_wrong_creds = QtCore.pyqtSignal(str)
     user_logged_in = QtCore.pyqtSignal()
@@ -27,14 +33,18 @@ class ClientUI(QMainWindow):
     auth_error = QtCore.pyqtSignal()
     initialized = QtCore.pyqtSignal()
 
-    # def __init__(self):
-    #     super(ClientUI, self).__init__()
-
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
+        """Handle of close event. Emits close signal"""
+
         self.close.emit()
 
 
 class UI(Ui_MainWindow):
+    """GUI logic"""
+
+    # Словарь с цветами фона сообщений. Ключ - результат проверки, является ли
+    # отправитель сообщения текущим пользователем. Если не является - это
+    # входящее сообщение
     colors = {
         True: (255, 192, 203),
         False: (102, 205, 170)
@@ -46,6 +56,8 @@ class UI(Ui_MainWindow):
         self.receive = None
 
     def setupUi(self, _):
+        """Initialization method"""
+
         super(UI, self).setupUi(self.application)
         self.client.gui = self.application
         self.reg_log_dialog.hide()
@@ -56,6 +68,8 @@ class UI(Ui_MainWindow):
         self.send.hide()
 
     def set_signals(self):
+        """Connects different signals with slots"""
+
         # connection
         self.application.connected.connect(self.client_login_dialog)
         self.application.close.connect(self.client_close_window)
@@ -80,6 +94,9 @@ class UI(Ui_MainWindow):
         self.send.clicked.connect(self.send_message)
 
     def authorization_error(self):
+        """Authorization error slot. If called stops receiving requests,
+        close all widgets, disconnects socket and activate connect button"""
+
         self.receive.join(timeout=1)
         self.button_connect.setEnabled(True)
         self.reg_log_dialog.hide()
@@ -89,6 +106,9 @@ class UI(Ui_MainWindow):
         self.message.hide()
 
     def send_message(self):
+        """Slot to send outbox message. Get text from input, put it to
+        message box and call clients send_message method"""
+
         text = self.message.text()
         self.message.clear()
         contact = self.contacts.selectedItems()[0].text()
@@ -97,6 +117,9 @@ class UI(Ui_MainWindow):
         self.render_message(text, QColor(*self.colors.get(False)))
 
     def new_message(self, contact: str):
+        """Rendering of new inbox message. If message senders message box is
+        open - render message, else - show notification in the top of window"""
+
         if self.contacts.selectedItems() and contact == self.contacts.selectedItems()[0].text():
             messages = self.client.chat.get(contact)
             while len(messages['new']):
@@ -109,10 +132,16 @@ class UI(Ui_MainWindow):
             self.notification.setText(f"New message from {contact}")
 
     def find_contacts(self):
+        """Slot to handle FIND button click. Get name from input and call
+        clients find method"""
+
         value = self.search_input.text()
         self.client.find_contact(value)
 
     def add_contact(self):
+        """Handle add contact to contact list by double-clicking on username
+        if found list. Get username and call add_contact client method"""
+
         contact = self.search_list.selectedItems()[0].text()
         self.search_list.clear()
         self.search_input.clear()
