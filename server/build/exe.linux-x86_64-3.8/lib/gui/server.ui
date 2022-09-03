@@ -1,0 +1,340 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>801</width>
+    <height>500</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QTabWidget" name="admin_disconnect">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>801</width>
+      <height>451</height>
+     </rect>
+    </property>
+    <property name="currentIndex">
+     <number>0</number>
+    </property>
+    <widget class="QWidget" name="console">
+     <attribute name="title">
+      <string>Console</string>
+     </attribute>
+     <widget class="QListWidget" name="console_log">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>801</width>
+        <height>421</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: rgb(211, 215, 207);
+background-color: rgb(0, 0, 0);</string>
+      </property>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="admin_connected">
+     <attribute name="title">
+      <string>Clients</string>
+     </attribute>
+     <widget class="QTableWidget" name="admin_clients">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>30</y>
+        <width>800</width>
+        <height>390</height>
+       </rect>
+      </property>
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <property name="editTriggers">
+       <set>QAbstractItemView::EditKeyPressed</set>
+      </property>
+      <property name="dragDropOverwriteMode">
+       <bool>false</bool>
+      </property>
+      <property name="cornerButtonEnabled">
+       <bool>false</bool>
+      </property>
+      <column>
+       <property name="text">
+        <string>Address</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Port</string>
+       </property>
+      </column>
+      <column>
+       <property name="text">
+        <string>Datetime</string>
+       </property>
+      </column>
+     </widget>
+    </widget>
+    <widget class="QWidget" name="admin_settings">
+     <attribute name="title">
+      <string>Settings</string>
+     </attribute>
+     <widget class="QLabel" name="admin_label_host">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>40</y>
+        <width>67</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>HOST</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="admin_host">
+      <property name="geometry">
+       <rect>
+        <x>250</x>
+        <y>40</y>
+        <width>150</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>localhost</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="admin_label_port">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>70</y>
+        <width>67</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>PORT</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="admin_port">
+      <property name="geometry">
+       <rect>
+        <x>250</x>
+        <y>70</y>
+        <width>67</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>7777</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="admin_label_database">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>100</y>
+        <width>150</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>CURRENT DATABASE</string>
+      </property>
+     </widget>
+     <widget class="QLabel" name="admin_database">
+      <property name="geometry">
+       <rect>
+        <x>250</x>
+        <y>100</y>
+        <width>300</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>default</string>
+      </property>
+     </widget>
+     <widget class="QPushButton" name="admin_edit_conn">
+      <property name="geometry">
+       <rect>
+        <x>450</x>
+        <y>50</y>
+        <width>200</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>CONNECTION SETTINGS</string>
+      </property>
+     </widget>
+     <widget class="QWidget" name="host_port_dialog" native="true">
+      <property name="geometry">
+       <rect>
+        <x>250</x>
+        <y>20</y>
+        <width>281</width>
+        <height>361</height>
+       </rect>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">background-color: rgb(243, 243, 243);</string>
+      </property>
+      <widget class="QLineEdit" name="settings_host">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>50</y>
+         <width>200</width>
+         <height>25</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QLabel" name="settings_host_label">
+       <property name="geometry">
+        <rect>
+         <x>50</x>
+         <y>20</y>
+         <width>67</width>
+         <height>17</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>HOST</string>
+       </property>
+      </widget>
+      <widget class="QLabel" name="settings_port_label">
+       <property name="geometry">
+        <rect>
+         <x>50</x>
+         <y>90</y>
+         <width>67</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>PORT</string>
+       </property>
+      </widget>
+      <widget class="QLineEdit" name="settings_port">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>130</y>
+         <width>200</width>
+         <height>25</height>
+        </rect>
+       </property>
+      </widget>
+      <widget class="QDialogButtonBox" name="confirm_btns">
+       <property name="geometry">
+        <rect>
+         <x>60</x>
+         <y>290</y>
+         <width>166</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="standardButtons">
+        <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+       </property>
+      </widget>
+      <widget class="QLabel" name="settings_db_label">
+       <property name="geometry">
+        <rect>
+         <x>50</x>
+         <y>190</y>
+         <width>100</width>
+         <height>20</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string>DATABASE</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="settings_db_choice">
+       <property name="geometry">
+        <rect>
+         <x>40</x>
+         <y>230</y>
+         <width>200</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="cursor">
+        <cursorShape>ArrowCursor</cursorShape>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="frame">
+        <bool>false</bool>
+       </property>
+      </widget>
+     </widget>
+     <widget class="QLabel" name="restart_needed">
+      <property name="geometry">
+       <rect>
+        <x>60</x>
+        <y>140</y>
+        <width>350</width>
+        <height>17</height>
+       </rect>
+      </property>
+      <property name="font">
+       <font>
+        <weight>75</weight>
+        <bold>true</bold>
+       </font>
+      </property>
+      <property name="styleSheet">
+       <string notr="true">color: rgb(204, 0, 0);</string>
+      </property>
+      <property name="text">
+       <string>RESTART APPLICATION TO APPLY SETTINGS</string>
+      </property>
+     </widget>
+     <zorder>host_port_dialog</zorder>
+     <zorder>admin_label_host</zorder>
+     <zorder>admin_host</zorder>
+     <zorder>admin_label_port</zorder>
+     <zorder>admin_port</zorder>
+     <zorder>admin_label_database</zorder>
+     <zorder>admin_database</zorder>
+     <zorder>admin_edit_conn</zorder>
+     <zorder>restart_needed</zorder>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>801</width>
+     <height>22</height>
+    </rect>
+   </property>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
