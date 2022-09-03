@@ -34,7 +34,11 @@ class ClientUI(QMainWindow):
     initialized = QtCore.pyqtSignal()
 
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
-        """Handle of close event. Emits close signal"""
+        """
+        Handle of close event. Emit close signal
+        :param a0: QCloseEvent instance
+        :return:
+        """
 
         self.close.emit()
 
@@ -51,12 +55,21 @@ class UI(Ui_MainWindow):
     }
 
     def __init__(self, client: TCPSocketClient, application: ClientUI):
+        """
+        Init
+        :param client: TCPSocketClient instance
+        :param application: ClientUI instance
+        """
         self.application = application
         self.client = client
         self.receive = None
 
     def setupUi(self, _):
-        """Initialization method"""
+        """
+        Initialization method
+        :param _: unused
+        :return:
+        """
 
         super(UI, self).setupUi(self.application)
         self.client.gui = self.application
@@ -68,7 +81,10 @@ class UI(Ui_MainWindow):
         self.send.hide()
 
     def set_signals(self):
-        """Connects different signals with slots"""
+        """
+        Connects different signals with slots
+        :return:
+        """
 
         # connection
         self.application.connected.connect(self.client_login_dialog)
@@ -94,8 +110,11 @@ class UI(Ui_MainWindow):
         self.send.clicked.connect(self.send_message)
 
     def authorization_error(self):
-        """Authorization error slot. If called stops receiving requests,
-        close all widgets, disconnects socket and activate connect button"""
+        """
+        Authorization error slot. If called stops receiving requests,
+        close all widgets, disconnects socket and activate connect button
+        :return:
+        """
 
         self.receive.join(timeout=1)
         self.button_connect.setEnabled(True)
@@ -106,8 +125,11 @@ class UI(Ui_MainWindow):
         self.message.hide()
 
     def send_message(self):
-        """Slot to send outbox message. Get text from input, put it to
-        message box and call clients send_message method"""
+        """
+        Slot to send outbox message. Get text from input, put it to
+        message box and call clients send_message method
+        :return:
+        """
 
         text = self.message.text()
         self.message.clear()
@@ -117,8 +139,12 @@ class UI(Ui_MainWindow):
         self.render_message(text, QColor(*self.colors.get(False)))
 
     def new_message(self, contact: str):
-        """Rendering of new inbox message. If message senders message box is
-        open - render message, else - show notification in the top of window"""
+        """
+        Rendering of new inbox message. If message senders message box is
+        open - render message, else - show notification in the top of window
+        :param contact: str
+        :return:
+        """
 
         if self.contacts.selectedItems() and contact == self.contacts.selectedItems()[0].text():
             messages = self.client.chat.get(contact)
@@ -132,15 +158,21 @@ class UI(Ui_MainWindow):
             self.notification.setText(f"New message from {contact}")
 
     def find_contacts(self):
-        """Slot to handle FIND button click. Get name from input and call
-        clients find method"""
+        """
+        Slot to handle FIND button click. Get name from input and call
+        clients find method
+        :return:
+        """
 
         value = self.search_input.text()
         self.client.find_contact(value)
 
     def add_contact(self):
-        """Handle add contact to contact list by double-clicking on username
-        if found list. Get username and call add_contact client method"""
+        """
+        Handle add contact to contact list by double-clicking on username
+        if found list. Get username and call add_contact client method
+        :return:
+        """
 
         contact = self.search_list.selectedItems()[0].text()
         self.search_list.clear()
@@ -149,6 +181,12 @@ class UI(Ui_MainWindow):
         self.search_list.hide()
 
     def render_search(self, users: List[User]):
+        """
+        Render search list after signal from client application
+        :param users: List[Users]
+        :return:
+        """
+
         self.search_list.clear()
 
         for user in users:
@@ -157,11 +195,22 @@ class UI(Ui_MainWindow):
         self.search_list.show()
 
     def render_message(self, msg: str, color: QColor):
+        """
+        Render new message to chat
+        :param msg: str
+        :param color: QColor
+        :return:
+        """
+
         mess = QListWidgetItem(msg)
         mess.setBackground(color)
         self.message_box.addItem(mess)
 
     def render_messages(self):
+        """
+        Render message box after double-click on contact
+        :return:
+        """
 
         self.message_box.show()
         self.message.show()
@@ -182,6 +231,11 @@ class UI(Ui_MainWindow):
             self.notification.clear()
 
     def client_close_window(self):
+        """
+        Normally finishing processes and send message to server when app window closing
+        :return:
+        """
+
         if self.client.is_connected:
             self.client.quit()
             self.client.shutdown()
@@ -194,15 +248,32 @@ class UI(Ui_MainWindow):
             self.receive = None
 
     def client_connect(self):
+        """
+        Start receiving thread and connect server on button click
+        :return:
+        """
+
         self.client.connect()
         self.receive = Thread(target=self.client.receive, name='client', daemon=True)
         self.receive.start()
 
     def client_login_dialog(self):
+        """
+        Show client login/register dialog after successfully connected
+        :return:
+        """
+
         self.button_connect.setDisabled(True)
         self.reg_log_dialog.show()
 
     def client_register(self, e: QPushButton):
+        """
+        Handle register dialog. Takes button value, then get value of inputs, compare password and confirm:
+        if they are same - send register request, else: show attention
+        :param e: QPushButton
+        :return:
+        """
+
         if e.text() == '&OK':
             login = self.reg_login_input.text()
             passwd_1 = self.reg_passwd_input.text()
@@ -216,30 +287,69 @@ class UI(Ui_MainWindow):
             self.client_close_window()
 
     def client_register_error(self, text: str):
+        """
+        Show notification when register failed by server
+        :param text: str
+        :return:
+        """
+
         self.reg_error.setText(text)
 
     def client_login_ok(self):
+        """
+        If login OK - hide login dialog and starts client initializing
+        :return:
+        """
+
         self.reg_log_dialog.hide()
         self.client.get_server_data()
 
     def initialize_ok(self):
+        """
+        Render interface after finishing initialization
+        :return:
+        """
+
         self.username.setText(self.client.user.login)
         self.render()
 
     def render_contact(self, name: str):
+        """
+        Render contact to contact list
+        :param name: str
+        :return:
+        """
+
         contact = QListWidgetItem(name)
         self.contacts.addItem(contact)
 
     def render(self):
+        """
+        Rendering contact list
+        :return:
+        """
+
         self.contacts.clear()
 
         for name in self.client.chat.keys():
             self.render_contact(name)
 
     def client_login_wrong(self, text: str):
+        """
+        Show notification when login failed
+        :param text: str
+        :return:
+        """
+
         self.login_wrong.setText(text)
 
     def client_login(self, e: QPushButton):
+        """
+        Handle buttons on login dialog. If OK - takes login and password and send login request
+        :param e: QPushButton
+        :return:
+        """
+
         if e.text() == '&OK':
             login = self.input_login.text()
             passwd = self.input_password.text()

@@ -1,3 +1,8 @@
+"""
+Module implement sqlalchemy mapping classes of server models
+"""
+
+
 import sqlalchemy.exc
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME, BOOLEAN
@@ -8,6 +13,8 @@ Base = declarative_base()
 
 
 class Client(Base):
+    """Client. Define user"""
+
     __tablename__ = "clients"
 
     id = Column(INTEGER, primary_key=True)
@@ -24,6 +31,7 @@ class Client(Base):
 
 
 class ClientHistory(Base):
+    """Define history of users connection"""
     __tablename__ = 'clients_history'
 
     id = Column(INTEGER, primary_key=True)
@@ -39,6 +47,7 @@ class ClientHistory(Base):
 
 
 class Chat(Base):
+    """Table for many-to-many relationship for users"""
     __tablename__ = 'chats'
 
     id = Column(INTEGER, primary_key=True)
@@ -59,6 +68,7 @@ class Chat(Base):
 
 
 class MessageHistory(Base):
+    """Define history of messages"""
     __tablename__ = 'messages'
 
     id = Column(INTEGER, primary_key=True)
@@ -82,6 +92,11 @@ class MessageHistory(Base):
 
 
 def create_tables(engine: Engine):
+    """
+    Create tables of server database
+    :param engine: sqlalchemy.Engine
+    :return:
+    """
     result = True
     try:
         metadata = Base.metadata

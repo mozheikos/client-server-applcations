@@ -1,3 +1,6 @@
+"""Client database models mapping module"""
+
+
 import sqlalchemy.exc
 from sqlalchemy import Column, ForeignKey
 from sqlalchemy.dialects.sqlite import INTEGER, VARCHAR, DATETIME
@@ -8,6 +11,8 @@ Base = declarative_base()
 
 
 class Contact(Base):
+    """Contact - instance of users contact list"""
+
     __tablename__ = 'contacts'
 
     id = Column(INTEGER, primary_key=True)
@@ -22,6 +27,8 @@ class Contact(Base):
 
 
 class History(Base):
+    """Instance of message. Called History for difference from PyDantic models"""
+
     __tablename__ = 'history'
 
     id = Column(INTEGER, primary_key=True)
@@ -38,6 +45,8 @@ class History(Base):
 
 
 def create_tables(engine: Engine):
+    """Create tables in database"""
+
     result = True
     try:
         metadata = Base.metadata

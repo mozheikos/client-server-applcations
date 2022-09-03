@@ -1,7 +1,11 @@
-import json
-from _socket import SHUT_RDWR
-from collections import deque
+"""
+Server main processing module
+"""
+
+
 import datetime
+import json
+from collections import deque
 from select import select
 from socket import socket
 from typing import Union, List, Optional, Tuple
@@ -20,6 +24,10 @@ from templates.templates import Request, ConnectedUser, User, Message
 
 
 class TCPSocketServer(BaseTCPSocket):
+    """
+    Server socket class. Receive requests and handle.
+    """
+
     pool_size: int = 5
     request_handler = None
     connected = []
@@ -59,12 +67,17 @@ class TCPSocketServer(BaseTCPSocket):
 
     @staticmethod
     def __generate_keys() -> Tuple[rsa.PublicKey, rsa.PrivateKey]:
-        return rsa.newkeys(512, poolsize=16)
+        """
+        Generate RSA key pair
+        :return: Tuple[rsa.PublicKey, rsa.PrivateKey]
+        """
+        return rsa.newkeys(settings.RSA, poolsize=16)
 
     def bind_and_listen(self) -> None:
         """
-            Initialize server socket. Calls on initialization of class automatically.
-            Can be called manually, if start = False
+        Initialize server socket. Calls on initialization of class automatically.
+        Can be called manually, if start = False
+        :return:
         """
 
         self.connection.bind((self.host, self.port))
@@ -72,6 +85,11 @@ class TCPSocketServer(BaseTCPSocket):
         self.connected.append(self.connection)
 
     def accept_connection(self):
+        """
+        Accept new connection, append client socket to connected list, send rsa public key to client.
+        Emit console_log
+        :return:
+        """
 
         client, address = self.connection.accept()
         self.connected.append(client)
@@ -79,65 +97,66 @@ class TCPSocketServer(BaseTCPSocket):
         self.gui.console_log.emit(f"{address[0]} connected")
 
     def serve(self):
+        """
+        Main loop method.
+        :return:
+        """
         self.gui.console_log.emit(f'Serving at {self.host}:{self.port}')
 
-        write = []
         while True:
-            try:
-                write: List[socket]
-                read, write, _ = select(self.connected, self.connected, [])
+            read, write, _ = select(self.connected, self.connected, [])
 
-                for sock in read:
-                    if sock is self.connection:
-                        self.accept_connection()
-                    else:
-                        self.handle_request(sock, write)
+            for sock in read:
+                if sock is self.connection:
+                    self.accept_connection()
+                else:
+                    self.handle_request(sock, write)
 
-            # KeyboardInterrupt возбуждается по CTRL + C, добавил обработку для корректного завершения и отправки
-            # клиентам сигнала о том, что сервер недоступен
-            except KeyboardInterrupt:
-                for sock in write:
-                    if sock is self.connection:
-                        continue
-                    request = Request(
-                        action=settings.Action.server_shutdown,
-                        time=datetime.datetime.now().strftime(settings.DATE_FORMAT)
-                    )
-                    try:
-                        sock.send(request.json(exclude_none=True).encode(settings.DEFAULT_ENCODING))
-                        sock.close()
-                    except OSError:
-                        continue
-                self.connection.shutdown(SHUT_RDWR)
-                self.shutdown()
-                break
+    def handle_request(self, client: socket, writable: List[socket]):
+        """
+        Create instance of handler class and call handle_request()
+        :param client: socket
+        :param writable: list[socket]
+        :return:
+        """
 
-    def handle_request(self, client, writable):
         handler = self.request_handler(client, self, writable, self.database, self._public, self._private)
         handler.handle_request()
 
 
 class RequestHandler:
-
+    """
+    Server handler class. Handle request and send response
+    """
     def __init__(
             self,
             request: socket,
             server: TCPSocketServer,
-            clients: List[socket],
             database: ServerDatabase,
             public_key: rsa.PublicKey,
             private_key: rsa.PrivateKey
     ):
+        """
+        Init
+        :param request: socket - client socket to receive request data
+        :param server: TCPServerSocket -  server class instance
+        :param database: ServerDatabase - instance of server database handler
+        :param public_key: rsa.PublicKey - server public key
+        :param private_key: rsa.PrivateKey - server private key
+        """
+
         self.__private_key = private_key
         self.__public_key = public_key
         self.message: Optional[Request] = None
         self.request = request
         self.server = server
-        self.clients = clients
         self.db = database
 
     def get_method(self):
-
+        """
+        Returns handler method to handle request in router
+        :return: Callable
+        """
         methods = {
             settings.Action.presence: self.__handle_presence,
             settings.Action.msg: self.__handle_message,
@@ -154,6 +173,11 @@ class RequestHandler:
 
     @login_required
     def __handle_messages(self):
+        """
+        Handle messages history request
+        :return:
+        """
+
         messages = self.db.get_message_history(self.message.user)
         status = settings.Status.ok
         action = settings.Action.messages
@@ -162,6 +186,11 @@ class RequestHandler:
 
     @login_required
     def __handle_contacts(self):
+        """
+        Handle get_contacts request
+        :return:
+        """
+
         user = self.message.user
         contacts = [User(id=x.id, login=x.login, verbose_name=x.verbose_name)
                     for x in self.db.get_user_contact_list(user)]
@@ -171,10 +200,18 @@ class RequestHandler:
         self.__send_response(status, alert, action)
 
     def __handle_quit(self):
+        """
+        Handle quit request
+        :return:
+        """
         self.__close_request()
 
     def __handle_register(self):
-        """Регистрация нового пользователя"""
+        """
+        Handle register request. Creates new user. If success - directly call auth, else send Unauthorized
+        response
+        :return:
+        """
         try:
             self.db.create_user(self.message.user)
 
@@ -197,6 +234,13 @@ class RequestHandler:
             alert: Union[Message, User, str, List[User], List[Message]],
             action: settings.Action
     ):
+        """
+        Method to send response. Emit console_log
+        :param status: settings.Status - response status
+        :param alert: Union[Message, User, str, List[User], List[Message]] - data to send
+        :param action: settings.Action
+        :return:
+        """
 
         response = Request(
             status=status,
@@ -213,11 +257,20 @@ class RequestHandler:
 
     @login_required
     def __search(self):
+        """
+        Handle search request
+        :return:
+        """
+
         response = self.db.search(self.message.data)
         self.__send_response(settings.Status.ok, response, settings.Action.search)
 
     @login_required
     def __add_contact(self):
+        """
+        Handle add contact request
+        :return:
+        """
 
         try:
             self.db.create_chat(self.message.user, self.message.data)
@@ -245,6 +298,10 @@ class RequestHandler:
 
     @login_required
     def __del_contact(self):
+        """
+        Handle delete contact request
+        :return:
+        """
         try:
             self.db.delete_chat(self.message.user, self.message.data)
             status = settings.Status.ok
@@ -257,6 +314,11 @@ class RequestHandler:
         self.__send_response(status, alert, action)
 
     def __handle_presence(self):
+        """
+        Handle presence. Receives clients public key and put it in server.public_keys collection.
+        Emit user_connected
+        :return:
+        """
 
         key = rsa.PublicKey(*self.message.data)
         self.server.public_keys[self.request] = key
@@ -267,7 +329,12 @@ class RequestHandler:
         self.__send_response(settings.Status.ok, 'Success', settings.Action.presence)
 
     def __handle_auth(self):
-        """Presense присылает логопасс. Функция проверяет существование пользователя и его пароль"""
+        """
+        Handle login request. Get user from database, compare hashed passwords. If success -
+        generates session auth token and send it with response status 200, else -
+        send response with status 401
+        :return:
+        """
         user = self.db.get_user(self.message.user.login)
 
         if not user or user.password != get_hashed_password(self.message.user.password):
@@ -295,6 +362,11 @@ class RequestHandler:
 
     @login_required
     def __handle_message(self):
+        """
+        Handle message request. Save message to history. If recipient is connected - send message, else
+        mark message in database as not send
+        :return:
+        """
         recipient = self.message.data.to
         to_send = self.server.connected_users.get(recipient, None)
 
@@ -308,6 +380,11 @@ class RequestHandler:
             self.db.create_message(self.message.data, False)
 
     def __handle_error(self, error: Union[ValidationError, AssertionError, ConnectionError]):
+        """
+        Error handling. On assertion, validation and connection error sends response with error text
+        :param error: Union[ValidationError, AssertionError, ConnectionError]
+        :return:
+        """
         msg = ''
         if isinstance(error, ValidationError):
             error = json.loads(error.json())[0]
@@ -322,6 +399,13 @@ class RequestHandler:
             self.__send_response(settings.Status.bad_request, msg, self.message.action)
 
     def __encrypt(self, data: Request, sock: socket = None) -> bytes:
+        """
+        Encrypt request with rsa key
+        :param data: Request
+        :param sock: socket, that represents user, whose public key will use to encrypt
+        :return: bytes
+        """
+
         cipher = Fernet.generate_key()
         cipher_key = Fernet(cipher)
 
@@ -337,16 +421,24 @@ class RequestHandler:
         return result
 
     def __decrypt(self, data: bytes) -> bytes:
+        """
+        Decrypt request, represents bytestring
+        :param data: bytes
+        :return: bytes
+        """
 
-        length = 64  # length of fernet key, encoded with rsa
-
-        decoded_key, payload = data[:length], data[length:]
+        decoded_key, payload = data[:settings.FERNET], data[settings.FERNET:]
         cipher = rsa.decrypt(decoded_key, self.__private_key)
 
         cipher_key = Fernet(cipher)
         return cipher_key.decrypt(payload)
 
     def handle_request(self):
+        """
+        Main request handler. Receives request, decrypt it and call handler by request action
+        :return:
+        """
+
         try:
             data = self.request.recv(self.server.buffer_size)
             
@@ -378,6 +470,11 @@ class RequestHandler:
             self.__handle_error(e)
 
     def __close_request(self):
+        """
+        Closes client socket
+        :return:
+        """
+
         address, port = self.request.getpeername()
         self.server.gui.console_log.emit(f"User {address}:{port} disconnected")
         self.server.gui.user_disconnected.emit((address, str(port)))

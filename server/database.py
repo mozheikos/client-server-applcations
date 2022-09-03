@@ -1,3 +1,8 @@
+"""
+Implements server database class and methods
+"""
+
+
 import datetime
 from typing import Optional, List
 
@@ -13,19 +18,35 @@ from templates.templates import User, Message
 
 
 class ServerDatabase(Database):
-
+    """
+    Handler class for server database. Implements all CRUD operations
+    """
     def __init__(self):
         super(ServerDatabase, self).__init__()
 
     @staticmethod
     def _create_tables(engine: Engine):
+        """Create tables in database if not exist"""
+
         return create_tables(engine)
 
     def get_user(self, username: str) -> Optional[Client]:
+        """
+        Get single user by username
+        :param username: str
+        :returns Client
+        """
+
         user: Client = self._db.query(Client).filter(Client.login == username).one_or_none()
         return user
 
     def search(self, value: str) -> List[User]:
+        """
+        Get users by like expression
+        :param value: str
+        :return: List[User]
+        """
+
         users = self._db.query(Client).filter(Client.login.like(value)).all()
 
         return [User(
@@ -42,6 +63,12 @@ class ServerDatabase(Database):
         self._db.commit()
 
     def create_user(self, user: User) -> int:
+        """
+        Create user. Returns id. If exist - raises AlreadyExist
+        :param user: USer
+        :return: int
+        """
+
         if self.get_user(user.login):
             raise AlreadyExist(f'Пользователь <{user.login}> уже существует')
 
@@ -61,6 +88,11 @@ class ServerDatabase(Database):
         return client.id
 
     def get_user_contact_list(self, user: User) -> List[Client]:
+        """
+        Returns contacts of user
+        :param user: User
+        :return: List[Client]
+        """
 
         contacts: List[Chat] = self._db.query(Chat).filter(
             or_(
@@ -73,7 +105,11 @@ class ServerDatabase(Database):
         return result
 
     def get_message_history(self, user: User) -> List[Message]:
-
+        """
+        Returns user's messages
+        :param user:User
+        :return: List[Message]
+        """
         messages: List[MessageHistory] = self._db.query(MessageHistory).filter(
                 MessageHistory.recipient_id == user.id
         ).filter(MessageHistory.sent.is_(False)).all()
@@ -93,6 +129,13 @@ class ServerDatabase(Database):
         return result
 
     def create_message(self, data: Message, sent: bool):
+        """
+        Save new message
+        :param data: Message
+        :param sent: bool - flag of message sent to recipient
+        :return:
+        """
+
         sender = self.get_user(data.from_)
         if not sender:
             raise NotExist(f"Пользователь {data.from_} не существует")
@@ -112,6 +155,12 @@ class ServerDatabase(Database):
         self._db.commit()
 
     def create_chat(self, user: User, other: User) -> int:
+        """
+        Create chat between two users. If exist - raises AlreadyExist
+        :param user: User
+        :param other: User
+        :return: int - id
+        """
 
         exist = self._db.query(Chat).filter(
             or_(
@@ -135,6 +184,12 @@ class ServerDatabase(Database):
         return obj.id
 
     def delete_chat(self, user: User, other: User):
+        """
+        Delete chat (drop user from contact list). If not exist - raises NotExist
+        :param user: User
+        :param other: User
+        :return:
+        """
 
         chat = self._db.query(Chat).filter(or_(
             and_(

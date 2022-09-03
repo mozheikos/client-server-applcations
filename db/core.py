@@ -1,3 +1,8 @@
+"""
+Module implements base class for databases
+"""
+
+
 import json
 from pathlib import Path
 from typing import Optional
@@ -12,7 +17,9 @@ from common.exceptions import NotExist
 
 
 class DatabaseFactory:
-
+    """
+    Factory class. For auto database connection initialization
+    """
     class Database(BaseModel):
         dialect: str
         driver: str
@@ -61,6 +68,10 @@ class DatabaseFactory:
 
 
 class Database:
+    """
+    Databases base class.
+    """
+
     def __init__(self, client: str = None):
         self._db = self._connect(client)
 
@@ -69,10 +80,22 @@ class Database:
         raise NotImplementedError
 
     def _get_database(self, client: str) -> Engine:
+        """
+        Return engine instance
+        :param client: str - need only for client database handler creation
+        :return: sqlalchemy.Engine
+        """
+
         factory = DatabaseFactory(self.__class__.__name__, client)
         return factory.get_engine()
 
     def _connect(self, client: str) -> Session:
+        """
+        Return session instance
+        :param client: str - need only for client database handler creation
+        :return: sqlalchemy.orm.Session
+        """
+
         engine = self._get_database(client)
         db_init = self._create_tables(engine)
         if db_init:
