@@ -8,12 +8,13 @@ from typing import Optional, List
 
 from sqlalchemy import or_, and_
 from sqlalchemy.engine import Engine
+from sqlalchemy.sql import default_comparator
 
 from common.config import settings
 from common.exceptions import AlreadyExist, NotExist
 from common.utils import get_hashed_password
 from db.core import Database
-from server.models import Client, create_tables, ClientHistory, Chat, MessageHistory
+from models import Client, create_tables, ClientHistory, Chat, MessageHistory
 from templates.templates import User, Message
 
 

@@ -11,7 +11,7 @@ from typing import Optional, Callable, Dict, Tuple
 import rsa
 from cryptography.fernet import Fernet
 
-from client.database import ClientDatabase
+from database import ClientDatabase
 from common.base import BaseTCPSocket
 from common.config import settings
 from common.exceptions import AlreadyExist

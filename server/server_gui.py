@@ -4,7 +4,7 @@ Module of server GUI
 
 
 import json
-from pathlib import Path
+import os
 from threading import Thread
 from typing import Dict
 
@@ -12,8 +12,8 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import QMainWindow, QTableWidgetItem, QPushButton, QListWidgetItem
 
 from common.config import settings
-from server.gui.server_ui import Ui_MainWindow
-from server.server_core import TCPSocketServer
+from gui.server_ui import Ui_MainWindow
+from server_core import TCPSocketServer
 
 
 class ServerUI(QMainWindow):
@@ -83,7 +83,7 @@ class UI(Ui_MainWindow):
         """
         if e.text() == '&OK':
 
-            path = Path(__file__).resolve().parent.parent
+            path = os.getcwd()
 
             host = self.settings_host.text()
             port = self.settings_port.text()
@@ -143,7 +143,7 @@ class UI(Ui_MainWindow):
         :return:
         """
 
-        path = Path(__file__).resolve().parent.parent
+        path = os.getcwd()
         with open(f"{path}/db/config.json", 'r', encoding='utf-8') as f:
             databases = json.load(f)
 

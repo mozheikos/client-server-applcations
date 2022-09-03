@@ -19,7 +19,7 @@ from common.config import settings
 from common.decorators import login_required
 from common.exceptions import AlreadyExist, NotExist, NotAuthorised
 from common.utils import generate_session_token, get_hashed_password
-from server.database import ServerDatabase
+from database import ServerDatabase
 from templates.templates import Request, ConnectedUser, User, Message
 
 
@@ -104,23 +104,22 @@ class TCPSocketServer(BaseTCPSocket):
         self.gui.console_log.emit(f'Serving at {self.host}:{self.port}')
 
         while True:
-            read, write, _ = select(self.connected, self.connected, [])
+            read, _, _ = select(self.connected, [], [])
 
             for sock in read:
                 if sock is self.connection:
                     self.accept_connection()
                 else:
-                    self.handle_request(sock, write)
+                    self.handle_request(sock)
 
-    def handle_request(self, client: socket, writable: List[socket]):
+    def handle_request(self, client: socket):
         """
         Create instance of handler class and call handle_request()
         :param client: socket
-        :param writable: list[socket]
         :return:
         """
 
-        handler = self.request_handler(client, self, writable, self.database, self._public, self._private)
+        handler = self.request_handler(client, self, self.database, self._public, self._private)
         handler.handle_request()
 
 

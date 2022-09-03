@@ -6,8 +6,9 @@ import datetime
 from typing import List
 
 from sqlalchemy.engine import Engine
+from sqlalchemy.sql import default_comparator
 
-from client.models import create_tables, Contact, History
+from models import create_tables, Contact, History
 from common.config import settings
 from common.exceptions import AlreadyExist
 
