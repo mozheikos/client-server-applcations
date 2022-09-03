@@ -1,0 +1,372 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>common package &#8212; Messenger 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="db package" href="db.html" />
+    <link rel="prev" title="client package" href="client.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="common-package">
+<h1>common package<a class="headerlink" href="#common-package" title="Permalink to this heading">¶</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="module-common.base">
+<span id="common-base-module"></span><h2>common.base module<a class="headerlink" href="#module-common.base" title="Permalink to this heading">¶</a></h2>
+<p>Module defines base class for server and client applications</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">common.base.</span></span><span class="sig-name descname"><span class="pre">BaseTCPSocket</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">host</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#common.base.BaseTCPSocket" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Base class. Creates TCP-socket instance, implement connect, shutdown, and context manager methods</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket.address_family">
+<span class="sig-name descname"><span class="pre">address_family</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">AddressFamily</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2</span></em><a class="headerlink" href="#common.base.BaseTCPSocket.address_family" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket.buffer_size">
+<span class="sig-name descname"><span class="pre">buffer_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">4096</span></em><a class="headerlink" href="#common.base.BaseTCPSocket.buffer_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket.connection">
+<span class="sig-name descname"><span class="pre">connection</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">socket</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#common.base.BaseTCPSocket.connection" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket.host">
+<span class="sig-name descname"><span class="pre">host</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'localhost'</span></em><a class="headerlink" href="#common.base.BaseTCPSocket.host" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket.port">
+<span class="sig-name descname"><span class="pre">port</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">7777</span></em><a class="headerlink" href="#common.base.BaseTCPSocket.port" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket.shutdown">
+<span class="sig-name descname"><span class="pre">shutdown</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#common.base.BaseTCPSocket.shutdown" title="Permalink to this definition">¶</a></dt>
+<dd><p>Close connection when called</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.base.BaseTCPSocket.socket_type">
+<span class="sig-name descname"><span class="pre">socket_type</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">SocketKind</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1</span></em><a class="headerlink" href="#common.base.BaseTCPSocket.socket_type" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-common.config">
+<span id="common-config-module"></span><h2>common.config module<a class="headerlink" href="#module-common.config" title="Permalink to this heading">¶</a></h2>
+<p>Gets all application settings from config.json</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="common.config.Settings">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">common.config.</span></span><span class="sig-name descname"><span class="pre">Settings</span></span><a class="headerlink" href="#common.config.Settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseModel</span></code></p>
+<dl class="py class">
+<dt class="sig sig-object py" id="common.config.Settings.Action">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Action</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#common.config.Settings.Action" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.add_chat">
+<span class="sig-name descname"><span class="pre">add_chat</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'add_chat'</span></em><a class="headerlink" href="#common.config.Settings.Action.add_chat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.auth">
+<span class="sig-name descname"><span class="pre">auth</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'authenticate'</span></em><a class="headerlink" href="#common.config.Settings.Action.auth" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.contacts">
+<span class="sig-name descname"><span class="pre">contacts</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'contacts'</span></em><a class="headerlink" href="#common.config.Settings.Action.contacts" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.del_chat">
+<span class="sig-name descname"><span class="pre">del_chat</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'del_chat'</span></em><a class="headerlink" href="#common.config.Settings.Action.del_chat" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.join">
+<span class="sig-name descname"><span class="pre">join</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'join'</span></em><a class="headerlink" href="#common.config.Settings.Action.join" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.leave">
+<span class="sig-name descname"><span class="pre">leave</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'leave'</span></em><a class="headerlink" href="#common.config.Settings.Action.leave" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.messages">
+<span class="sig-name descname"><span class="pre">messages</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'messages'</span></em><a class="headerlink" href="#common.config.Settings.Action.messages" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.msg">
+<span class="sig-name descname"><span class="pre">msg</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'msg'</span></em><a class="headerlink" href="#common.config.Settings.Action.msg" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.presence">
+<span class="sig-name descname"><span class="pre">presence</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'presence'</span></em><a class="headerlink" href="#common.config.Settings.Action.presence" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.probe">
+<span class="sig-name descname"><span class="pre">probe</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'probe'</span></em><a class="headerlink" href="#common.config.Settings.Action.probe" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.quit">
+<span class="sig-name descname"><span class="pre">quit</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'quit'</span></em><a class="headerlink" href="#common.config.Settings.Action.quit" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.recv">
+<span class="sig-name descname"><span class="pre">recv</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'recv'</span></em><a class="headerlink" href="#common.config.Settings.Action.recv" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.register">
+<span class="sig-name descname"><span class="pre">register</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'register'</span></em><a class="headerlink" href="#common.config.Settings.Action.register" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.search">
+<span class="sig-name descname"><span class="pre">search</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'search'</span></em><a class="headerlink" href="#common.config.Settings.Action.search" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Action.server_shutdown">
+<span class="sig-name descname"><span class="pre">server_shutdown</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'server_shutdown'</span></em><a class="headerlink" href="#common.config.Settings.Action.server_shutdown" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="common.config.Settings.Status">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#common.config.Settings.Status" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">str</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></p>
+<p>An enumeration.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Status.bad_request">
+<span class="sig-name descname"><span class="pre">bad_request</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'400</span> <span class="pre">Bad</span> <span class="pre">Request'</span></em><a class="headerlink" href="#common.config.Settings.Status.bad_request" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Status.forbidden">
+<span class="sig-name descname"><span class="pre">forbidden</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'403</span> <span class="pre">Forbidden'</span></em><a class="headerlink" href="#common.config.Settings.Status.forbidden" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Status.ok">
+<span class="sig-name descname"><span class="pre">ok</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'200</span> <span class="pre">OK'</span></em><a class="headerlink" href="#common.config.Settings.Status.ok" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="common.config.Settings.Status.unauthorized">
+<span class="sig-name descname"><span class="pre">unauthorized</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'401</span> <span class="pre">Unauthorized'</span></em><a class="headerlink" href="#common.config.Settings.Status.unauthorized" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-common.decorators">
+<span id="common-decorators-module"></span><h2>common.decorators module<a class="headerlink" href="#module-common.decorators" title="Permalink to this heading">¶</a></h2>
+<p>Module to define decorators</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="common.decorators.log">
+<span class="sig-prename descclassname"><span class="pre">common.decorators.</span></span><span class="sig-name descname"><span class="pre">log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#common.decorators.log" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator to logging function work
+:param func: Callable
+:return:</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="common.decorators.login_required">
+<span class="sig-prename descclassname"><span class="pre">common.decorators.</span></span><span class="sig-name descname"><span class="pre">login_required</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#common.decorators.login_required" title="Permalink to this definition">¶</a></dt>
+<dd><p>Decorator. Compares token and call function. If tokens not same - raises NotAuthorized
+:param f: Callable
+:return:</p>
+</dd></dl>
+
+</section>
+<section id="module-common.exceptions">
+<span id="common-exceptions-module"></span><h2>common.exceptions module<a class="headerlink" href="#module-common.exceptions" title="Permalink to this heading">¶</a></h2>
+<p>Custom exceptions</p>
+<dl class="py exception">
+<dt class="sig sig-object py" id="common.exceptions.AlreadyExist">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">common.exceptions.</span></span><span class="sig-name descname"><span class="pre">AlreadyExist</span></span><a class="headerlink" href="#common.exceptions.AlreadyExist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#common.exceptions.DatabaseException" title="common.exceptions.DatabaseException"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatabaseException</span></code></a></p>
+<p>Raises when any database instance already exist</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="common.exceptions.DatabaseException">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">common.exceptions.</span></span><span class="sig-name descname"><span class="pre">DatabaseException</span></span><a class="headerlink" href="#common.exceptions.DatabaseException" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+<p>Base database exveption</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="common.exceptions.NoSuchDatabaseError">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">common.exceptions.</span></span><span class="sig-name descname"><span class="pre">NoSuchDatabaseError</span></span><a class="headerlink" href="#common.exceptions.NoSuchDatabaseError" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#common.exceptions.DatabaseException" title="common.exceptions.DatabaseException"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatabaseException</span></code></a></p>
+<p>Raises when database not exist</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="common.exceptions.NotAuthorised">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">common.exceptions.</span></span><span class="sig-name descname"><span class="pre">NotAuthorised</span></span><a class="headerlink" href="#common.exceptions.NotAuthorised" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Exception</span></code></p>
+<p>Raises when session tokens not same (used in login_requires decorator)</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt class="sig sig-object py" id="common.exceptions.NotExist">
+<em class="property"><span class="pre">exception</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">common.exceptions.</span></span><span class="sig-name descname"><span class="pre">NotExist</span></span><a class="headerlink" href="#common.exceptions.NotExist" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#common.exceptions.DatabaseException" title="common.exceptions.DatabaseException"><code class="xref py py-class docutils literal notranslate"><span class="pre">DatabaseException</span></code></a></p>
+<p>Raises when required database instance not exist</p>
+</dd></dl>
+
+</section>
+<section id="module-common.utils">
+<span id="common-utils-module"></span><h2>common.utils module<a class="headerlink" href="#module-common.utils" title="Permalink to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="common.utils.generate_session_token">
+<span class="sig-prename descclassname"><span class="pre">common.utils.</span></span><span class="sig-name descname"><span class="pre">generate_session_token</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#common.utils.generate_session_token" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate session token
+:param username: str
+:return: str</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="common.utils.get_hashed_password">
+<span class="sig-prename descclassname"><span class="pre">common.utils.</span></span><span class="sig-name descname"><span class="pre">get_hashed_password</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">password</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="headerlink" href="#common.utils.get_hashed_password" title="Permalink to this definition">¶</a></dt>
+<dd><p>generate hash of password with salt (set in config.json)
+:param password: str
+:return: str</p>
+</dd></dl>
+
+</section>
+<section id="module-common">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-common" title="Permalink to this heading">¶</a></h2>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Messenger</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">client-server-applcations</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="client.html">client package</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">common package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="db.html">db package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="launcher_client.html">launcher_client module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="launcher_server.html">launcher_server module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="server.html">server package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="templates.html">templates package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">client-server-applcations</a><ul>
+      <li>Previous: <a href="client.html" title="previous chapter">client package</a></li>
+      <li>Next: <a href="db.html" title="next chapter">db package</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Mozheiko Stanislav.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.1.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/common.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

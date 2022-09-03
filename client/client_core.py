@@ -19,9 +19,7 @@ from templates.templates import Request, User, Message
 
 
 class TCPSocketClient(BaseTCPSocket):
-    """
-    Client main class.
-    """
+    """Client main class."""
 
     user: User
     gui = None
@@ -53,7 +51,6 @@ class TCPSocketClient(BaseTCPSocket):
         Generates pair RSA keys
         :return: Tuple(rsa.PublicKey, rsa.PrivateKey)
         """
-
         return rsa.newkeys(settings.RSA, poolsize=16)
 
     def get_handler(self, action) -> Callable:
@@ -62,7 +59,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param action: str
         :return: Callable
         """
-
         methods = {
             settings.Action.presence: self._presence,
             settings.Action.register: self._register,
@@ -80,7 +76,6 @@ class TCPSocketClient(BaseTCPSocket):
         Main request router. Receives request and starts handler if action allowed
         :return:
         """
-
         while self.is_connected:
 
             data = self.connection.recv(self.buffer_size)
@@ -112,7 +107,6 @@ class TCPSocketClient(BaseTCPSocket):
         Handler for authorization error. Stops router work. Emit auth_error
         :return:
         """
-
         self.auth_error = True
         self.gui.auth_error.emit()
 
@@ -121,7 +115,6 @@ class TCPSocketClient(BaseTCPSocket):
         Send message about client disconnecting to server
         :return:
         """
-
         request = Request(
             action=settings.Action.quit,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -135,7 +128,6 @@ class TCPSocketClient(BaseTCPSocket):
         Connecting to server
         :return:
         """
-
         try:
             self.connection.connect((self.host, self.port))
         except Exception as exception:
@@ -152,7 +144,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: bytes
         :return: bytes
         """
-
         decoded_key, payload = request[:settings.FERNET], request[settings.FERNET:]
 
         cipher = rsa.decrypt(decoded_key, self.__privkey)
@@ -167,7 +158,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return: bytes
         """
-
         cipher = Fernet.generate_key()
         cipher_key = Fernet(cipher)
 
@@ -184,7 +174,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         self.connection.send(self._encrypt(request))
 
     def presence(self) -> None:
@@ -192,7 +181,6 @@ class TCPSocketClient(BaseTCPSocket):
         Send presence request
         :return:
         """
-
         request = Request(
             action=settings.Action.presence,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -206,7 +194,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         if request.status == settings.Status.ok:
             self.gui.connected.emit()
         else:
@@ -220,7 +207,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         self.gui.user_register_error.emit(request.data)
 
     def login(self, login: str, passwd: str, register: bool = False) -> None:
@@ -231,7 +217,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param register: bool
         :return:
         """
-
         # Создаем базу данных именно здесь. Вынужденная мера, связанная с запуском нескольких клиентов
         # из одной директории (для прверки работы. В таком случае, для избежания коллизий данных,
         # необходимо создавать отдельную базу для каждого юзера, соответственно узнать ее название можно
@@ -255,7 +240,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         if request.status == settings.Status.ok:
             self.user = User(
                 id=request.data.id,
@@ -273,7 +257,6 @@ class TCPSocketClient(BaseTCPSocket):
         Send request to fetch servers contact list for user
         :return:
         """
-
         request = Request(
             action=settings.Action.contacts,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -287,7 +270,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         self.db.save_contacts(request.data)
         self.contacts_fetch = True
 
@@ -296,7 +278,6 @@ class TCPSocketClient(BaseTCPSocket):
         Same as get_contacts, dut for message history
         :return:
         """
-
         request = Request(
             action=settings.Action.messages,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -310,7 +291,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         self.db.save_messages(request)
         self.messages_fetch = True
 
@@ -320,7 +300,6 @@ class TCPSocketClient(BaseTCPSocket):
         starts application initialization
         :return:
         """
-
         if self.auth_error:
             return
 
@@ -346,7 +325,6 @@ class TCPSocketClient(BaseTCPSocket):
         Emit initialized signal
         :return:
         """
-
         contacts = self.db.get_contacts()
         messages = self.db.get_messages()
 
@@ -375,7 +353,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param login: str
         :return:
         """
-
         request = Request(
             action=settings.Action.search,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -390,7 +367,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         self.found_contacts = {x.login: x for x in request.data}
         self.gui.find_contact.emit(request.data)
 
@@ -401,7 +377,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param login: str
         :return:
         """
-
         contact = self.found_contacts.get(login)
 
         request = Request(
@@ -419,7 +394,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         contact = request.data
 
         try:
@@ -441,7 +415,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param kind: str
         :return:
         """
-
         self.db.save_message(request, kind)
 
     def save_contact(self, contact: User):
@@ -450,7 +423,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param contact: User
         :return:
         """
-
         self.db.save_contact(contact)
 
     def message(self, text: str, recipient: str):
@@ -460,7 +432,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param recipient: str
         :return:
         """
-
         request = Request(
             action=settings.Action.msg,
             time=datetime.now().strftime(settings.DATE_FORMAT),
@@ -482,7 +453,6 @@ class TCPSocketClient(BaseTCPSocket):
         :param request: Request
         :return:
         """
-
         self.save_message(request, 'inbox')
         contact = self.chat.get(request.user.login, None)
 
