@@ -1,0 +1,555 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>server package &#8212; Messenger 0.1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="templates package" href="templates.html" />
+    <link rel="prev" title="log package" href="log.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="server-package">
+<h1>server package<a class="headerlink" href="#server-package" title="Permalink to this heading">¶</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading">¶</a></h2>
+</section>
+<section id="module-server.database">
+<span id="server-database-module"></span><h2>server.database module<a class="headerlink" href="#module-server.database" title="Permalink to this heading">¶</a></h2>
+<p>Implements server database class and methods</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="server.database.ServerDatabase">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.database.</span></span><span class="sig-name descname"><span class="pre">ServerDatabase</span></span><a class="headerlink" href="#server.database.ServerDatabase" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="db.html#db.core.Database" title="db.core.Database"><code class="xref py py-class docutils literal notranslate"><span class="pre">Database</span></code></a></p>
+<p>Handler class for server database. Implements all CRUD operations</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.auth_user">
+<span class="sig-name descname"><span class="pre">auth_user</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.models.Client" title="server.models.Client"><span class="pre">Client</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ip</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.database.ServerDatabase.auth_user" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.create_chat">
+<span class="sig-name descname"><span class="pre">create_chat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#server.database.ServerDatabase.create_chat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create chat between two users. If exist - raises AlreadyExist
+:param user: User
+:param other: User
+:return: int - id</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.create_message">
+<span class="sig-name descname"><span class="pre">create_message</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.Message" title="templates.templates.Message"><span class="pre">Message</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.database.ServerDatabase.create_message" title="Permalink to this definition">¶</a></dt>
+<dd><p>Save new message
+:param data: Message
+:param sent: bool - flag of message sent to recipient
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.create_user">
+<span class="sig-name descname"><span class="pre">create_user</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#server.database.ServerDatabase.create_user" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create user. Returns id. If exist - raises AlreadyExist
+:param user: USer
+:return: int</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.delete_chat">
+<span class="sig-name descname"><span class="pre">delete_chat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.database.ServerDatabase.delete_chat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete chat (drop user from contact list). If not exist - raises NotExist
+:param user: User
+:param other: User
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.get_message_history">
+<span class="sig-name descname"><span class="pre">get_message_history</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="templates.html#templates.templates.Message" title="templates.templates.Message"><span class="pre">Message</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#server.database.ServerDatabase.get_message_history" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns user’s messages
+:param user:User
+:return: List[Message]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.get_user">
+<span class="sig-name descname"><span class="pre">get_user</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">username</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#server.models.Client" title="server.models.Client"><span class="pre">Client</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#server.database.ServerDatabase.get_user" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get single user by username
+:param username: str
+:returns Client</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.get_user_contact_list">
+<span class="sig-name descname"><span class="pre">get_user_contact_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">user</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#server.models.Client" title="server.models.Client"><span class="pre">Client</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#server.database.ServerDatabase.get_user_contact_list" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns contacts of user
+:param user: User
+:return: List[Client]</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.database.ServerDatabase.search">
+<span class="sig-name descname"><span class="pre">search</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="templates.html#templates.templates.User" title="templates.templates.User"><span class="pre">User</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#server.database.ServerDatabase.search" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get users by like expression
+:param value: str
+:return: List[User]</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-server.models">
+<span id="server-models-module"></span><h2>server.models module<a class="headerlink" href="#module-server.models" title="Permalink to this heading">¶</a></h2>
+<p>Module implement sqlalchemy mapping classes of server models</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="server.models.Chat">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.models.</span></span><span class="sig-name descname"><span class="pre">Chat</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.models.Chat" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></p>
+<p>Table for many-to-many relationship for users</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Chat.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#server.models.Chat.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Chat.init">
+<span class="sig-name descname"><span class="pre">init</span></span><a class="headerlink" href="#server.models.Chat.init" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Chat.init_id">
+<span class="sig-name descname"><span class="pre">init_id</span></span><a class="headerlink" href="#server.models.Chat.init_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Chat.other">
+<span class="sig-name descname"><span class="pre">other</span></span><a class="headerlink" href="#server.models.Chat.other" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Chat.other_id">
+<span class="sig-name descname"><span class="pre">other_id</span></span><a class="headerlink" href="#server.models.Chat.other_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.models.Client">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.models.</span></span><span class="sig-name descname"><span class="pre">Client</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.models.Client" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></p>
+<p>Client. Define user</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Client.connect_history">
+<span class="sig-name descname"><span class="pre">connect_history</span></span><a class="headerlink" href="#server.models.Client.connect_history" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Client.created_at">
+<span class="sig-name descname"><span class="pre">created_at</span></span><a class="headerlink" href="#server.models.Client.created_at" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Client.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#server.models.Client.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Client.login">
+<span class="sig-name descname"><span class="pre">login</span></span><a class="headerlink" href="#server.models.Client.login" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Client.password">
+<span class="sig-name descname"><span class="pre">password</span></span><a class="headerlink" href="#server.models.Client.password" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.Client.verbose_name">
+<span class="sig-name descname"><span class="pre">verbose_name</span></span><a class="headerlink" href="#server.models.Client.verbose_name" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.models.ClientHistory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.models.</span></span><span class="sig-name descname"><span class="pre">ClientHistory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.models.ClientHistory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></p>
+<p>Define history of users connection</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.ClientHistory.address">
+<span class="sig-name descname"><span class="pre">address</span></span><a class="headerlink" href="#server.models.ClientHistory.address" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.ClientHistory.client">
+<span class="sig-name descname"><span class="pre">client</span></span><a class="headerlink" href="#server.models.ClientHistory.client" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.ClientHistory.client_id">
+<span class="sig-name descname"><span class="pre">client_id</span></span><a class="headerlink" href="#server.models.ClientHistory.client_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.ClientHistory.date">
+<span class="sig-name descname"><span class="pre">date</span></span><a class="headerlink" href="#server.models.ClientHistory.date" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.ClientHistory.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#server.models.ClientHistory.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.models.MessageHistory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.models.</span></span><span class="sig-name descname"><span class="pre">MessageHistory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.models.MessageHistory" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Base</span></code></p>
+<p>Define history of messages</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.content">
+<span class="sig-name descname"><span class="pre">content</span></span><a class="headerlink" href="#server.models.MessageHistory.content" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.date">
+<span class="sig-name descname"><span class="pre">date</span></span><a class="headerlink" href="#server.models.MessageHistory.date" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.id">
+<span class="sig-name descname"><span class="pre">id</span></span><a class="headerlink" href="#server.models.MessageHistory.id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.recipient">
+<span class="sig-name descname"><span class="pre">recipient</span></span><a class="headerlink" href="#server.models.MessageHistory.recipient" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.recipient_id">
+<span class="sig-name descname"><span class="pre">recipient_id</span></span><a class="headerlink" href="#server.models.MessageHistory.recipient_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.sender">
+<span class="sig-name descname"><span class="pre">sender</span></span><a class="headerlink" href="#server.models.MessageHistory.sender" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.sender_id">
+<span class="sig-name descname"><span class="pre">sender_id</span></span><a class="headerlink" href="#server.models.MessageHistory.sender_id" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.models.MessageHistory.sent">
+<span class="sig-name descname"><span class="pre">sent</span></span><a class="headerlink" href="#server.models.MessageHistory.sent" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="server.models.create_tables">
+<span class="sig-prename descclassname"><span class="pre">server.models.</span></span><span class="sig-name descname"><span class="pre">create_tables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">engine</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Engine</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.models.create_tables" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create tables of server database
+:param engine: sqlalchemy.Engine
+:return:</p>
+</dd></dl>
+
+</section>
+<section id="module-server.server_core">
+<span id="server-server-core-module"></span><h2>server.server_core module<a class="headerlink" href="#module-server.server_core" title="Permalink to this heading">¶</a></h2>
+<p>Server main processing module</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="server.server_core.RequestHandler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.server_core.</span></span><span class="sig-name descname"><span class="pre">RequestHandler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">request</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">socket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.server_core.TCPSocketServer" title="server.server_core.TCPSocketServer"><span class="pre">TCPSocketServer</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">database</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.database.ServerDatabase" title="server.database.ServerDatabase"><span class="pre">ServerDatabase</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">public_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PublicKey</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">private_key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">PrivateKey</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_core.RequestHandler" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Server handler class. Handle request and send response</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_core.RequestHandler.get_method">
+<span class="sig-name descname"><span class="pre">get_method</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.server_core.RequestHandler.get_method" title="Permalink to this definition">¶</a></dt>
+<dd><p>Returns handler method to handle request in router
+:return: Callable</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_core.RequestHandler.handle_request">
+<span class="sig-name descname"><span class="pre">handle_request</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.server_core.RequestHandler.handle_request" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main request handler. Receives request, decrypt it and call handler by request action
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.server_core.</span></span><span class="sig-name descname"><span class="pre">TCPSocketServer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">handler</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">host</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">buffer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pool_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bind_and_listen</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_core.TCPSocketServer" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="common.html#common.base.BaseTCPSocket" title="common.base.BaseTCPSocket"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseTCPSocket</span></code></a></p>
+<p>Server socket class. Receive requests and handle.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.accept_connection">
+<span class="sig-name descname"><span class="pre">accept_connection</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.server_core.TCPSocketServer.accept_connection" title="Permalink to this definition">¶</a></dt>
+<dd><p>Accept new connection, append client socket to connected list, send rsa public key to client.
+Emit console_log
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.bind_and_listen">
+<span class="sig-name descname"><span class="pre">bind_and_listen</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#server.server_core.TCPSocketServer.bind_and_listen" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize server socket. Calls on initialization of class automatically.
+Can be called manually, if start = False
+:return:</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.connected">
+<span class="sig-name descname"><span class="pre">connected</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#server.server_core.TCPSocketServer.connected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.connected_users">
+<span class="sig-name descname"><span class="pre">connected_users</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#server.server_core.TCPSocketServer.connected_users" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.handle_request">
+<span class="sig-name descname"><span class="pre">handle_request</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">client</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">socket</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">writable</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">socket</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_core.TCPSocketServer.handle_request" title="Permalink to this definition">¶</a></dt>
+<dd><p>Create instance of handler class and call handle_request()
+:param client: socket
+:param writable: list[socket]
+:return:</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.pool_size">
+<span class="sig-name descname"><span class="pre">pool_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5</span></em><a class="headerlink" href="#server.server_core.TCPSocketServer.pool_size" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.public_keys">
+<span class="sig-name descname"><span class="pre">public_keys</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">{}</span></em><a class="headerlink" href="#server.server_core.TCPSocketServer.public_keys" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.request_handler">
+<span class="sig-name descname"><span class="pre">request_handler</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#server.server_core.TCPSocketServer.request_handler" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_core.TCPSocketServer.serve">
+<span class="sig-name descname"><span class="pre">serve</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.server_core.TCPSocketServer.serve" title="Permalink to this definition">¶</a></dt>
+<dd><p>Main loop method.
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-server.server_gui">
+<span id="server-server-gui-module"></span><h2>server.server_gui module<a class="headerlink" href="#module-server.server_gui" title="Permalink to this heading">¶</a></h2>
+<p>Module of server GUI</p>
+<dl class="py class">
+<dt class="sig sig-object py" id="server.server_gui.ServerUI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.server_gui.</span></span><span class="sig-name descname"><span class="pre">ServerUI</span></span><a class="headerlink" href="#server.server_gui.ServerUI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">QMainWindow</span></code></p>
+<p>Server GUI application</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_gui.ServerUI.console_log">
+<span class="sig-name descname"><span class="pre">console_log</span></span><a class="headerlink" href="#server.server_gui.ServerUI.console_log" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_gui.ServerUI.user_connected">
+<span class="sig-name descname"><span class="pre">user_connected</span></span><a class="headerlink" href="#server.server_gui.ServerUI.user_connected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="server.server_gui.ServerUI.user_disconnected">
+<span class="sig-name descname"><span class="pre">user_disconnected</span></span><a class="headerlink" href="#server.server_gui.ServerUI.user_disconnected" title="Permalink to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="server.server_gui.UI">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">server.server_gui.</span></span><span class="sig-name descname"><span class="pre">UI</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">server</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.server_core.TCPSocketServer" title="server.server_core.TCPSocketServer"><span class="pre">TCPSocketServer</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">application</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#server.server_gui.ServerUI" title="server.server_gui.ServerUI"><span class="pre">ServerUI</span></a></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Ui_MainWindow</span></code></p>
+<p>Main server GUI class</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.confirm_settings">
+<span class="sig-name descname"><span class="pre">confirm_settings</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">e</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">QPushButton</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.confirm_settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Handler of confirm button in server settings. Saves new values to config.json.
+Shows attention of restart needed
+:param e: QPushButton
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.connected_add_row">
+<span class="sig-name descname"><span class="pre">connected_add_row</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">row</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.connected_add_row" title="Permalink to this definition">¶</a></dt>
+<dd><p>Add client data to connected clients table
+:param row: Dict[str, str]
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.connected_delete_row">
+<span class="sig-name descname"><span class="pre">connected_delete_row</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">addr</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.connected_delete_row" title="Permalink to this definition">¶</a></dt>
+<dd><p>Delete row in connected clients table when client disconnected
+:param addr: Tuple[str, str]
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.console_logging">
+<span class="sig-name descname"><span class="pre">console_logging</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">text</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.console_logging" title="Permalink to this definition">¶</a></dt>
+<dd><p>Send message ti server console
+:param text: str
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.edit_connect">
+<span class="sig-name descname"><span class="pre">edit_connect</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.edit_connect" title="Permalink to this definition">¶</a></dt>
+<dd><p>Show dialog of changing server settings
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.get_server_settings">
+<span class="sig-name descname"><span class="pre">get_server_settings</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.get_server_settings" title="Permalink to this definition">¶</a></dt>
+<dd><p>Set server settings from json-file
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.set_signals">
+<span class="sig-name descname"><span class="pre">set_signals</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.set_signals" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialize signal handlers
+:return:</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="server.server_gui.UI.setupUi">
+<span class="sig-name descname"><span class="pre">setupUi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">_</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#server.server_gui.UI.setupUi" title="Permalink to this definition">¶</a></dt>
+<dd><p>Initialization of UI application
+:param _: unused
+:return:</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-server">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-server" title="Permalink to this heading">¶</a></h2>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">Messenger</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="modules.html">client-server-applcations</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="client.html">client package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="common.html">common package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="db.html">db package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="launcher_client.html">launcher_client module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="launcher_server.html">launcher_server module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="log.html">log package</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">server package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="templates.html">templates package</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="modules.html">client-server-applcations</a><ul>
+      <li>Previous: <a href="log.html" title="previous chapter">log package</a></li>
+      <li>Next: <a href="templates.html" title="next chapter">templates package</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2022, Mozheiko Stanislav.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 5.1.1</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/server.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

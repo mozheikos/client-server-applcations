@@ -6,5 +6,7 @@
     "DATABASE": "default",
     "DEBUG": true,
     "DATE_FORMAT": "%d-%m-%Y %H:%M:%S",
-    "SALT": "some_salt"
+    "SALT": "some_salt",
+    "RSA": 512,
+    "FERNET": 64
 }

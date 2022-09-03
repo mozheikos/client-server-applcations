@@ -1,3 +1,8 @@
+"""
+Module to definition data models
+"""
+
+
 from socket import socket
 from typing import Optional, Union, List, Deque
 
@@ -7,6 +12,9 @@ from common.config import settings
 
 
 class Base(BaseModel):
+    """
+    Implementation Base class to use config of data validation
+    """
     class Config:
         arbitrary_types_allowed = True
         max_anystr_length = 1200
@@ -16,6 +24,10 @@ class Base(BaseModel):
 
 
 class User(Base):
+    """
+    Represents user
+    """
+
     id: Optional[int]
     login: str
     password: Optional[str]
@@ -24,6 +36,10 @@ class User(Base):
 
 
 class Message(Base):
+    """
+    Represents message
+    """
+
     to: str
     from_: str
     encoding: str = 'utf-8'
@@ -32,6 +48,10 @@ class Message(Base):
 
 
 class Request(Base):
+    """
+    Represents request
+    """
+
     status: Optional[settings.Status]
     action: settings.Action
     time: str
@@ -40,14 +60,11 @@ class Request(Base):
     data: Optional[Union[Message, User, str, List[User], List[Message], List[int]]]
 
 
-class Encrypted(Base):
-    payload: bytes
-    key: bytes
-
-
 class ConnectedUser(Base):
+    """
+    Represents client, connected to server
+    """
     user: User
     sock: socket
     data: Deque[Union[str, Request]]
     token: str
-    

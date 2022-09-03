@@ -1,3 +1,8 @@
+"""
+Gets all application settings from config.json
+"""
+
+
 import json
 from enum import Enum
 from pathlib import Path
@@ -37,6 +42,12 @@ class Settings(BaseModel):
         self.__set_attributes(data)
 
     def __set_attributes(self, data: dict):
+        """
+        Takes data from config.json and implement class variables same as field names in json
+        :param data: dict - json loaded data from config.json
+        :return:
+        """
+
         for k, v in data.items():
             self.__dict__[k] = v
 

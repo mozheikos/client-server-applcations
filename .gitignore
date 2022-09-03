@@ -3,5 +3,5 @@ lesson_1/__pycache__/
 .idea/
 .vscode/
 log_journal/
-database/database_client.sqlite3
-database/database_server.sqlite3
+server/database_server.sqlite3
+client/*_database.sqlite3
