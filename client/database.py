@@ -7,7 +7,7 @@ from typing import List
 
 from sqlalchemy.engine import Engine
 
-from client.models import create_tables, Contact, History
+from models import create_tables, Contact, History
 from common.config import settings
 from common.exceptions import AlreadyExist
 

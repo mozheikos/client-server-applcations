@@ -1,13 +1,11 @@
-import os
 import logging
+import os
 from logging import handlers
-
-from pathlib import Path
 
 """Оставлю только логгер в файл. В качестве хэндлера установил RotateFileHandler, так как в режиме DEBUG лог растет
 ОЧЕНЬ быстро, за 2 вечера выполнения дз - больше гигабайта!!! Ну и уровень сделал ERROR"""
 
-PATH = Path(__file__).resolve().parent.parent
+PATH = os.getcwd()
 if 'log_journal' not in os.listdir(PATH):
     os.mkdir(f"{PATH}/log_journal")
 

@@ -4,16 +4,15 @@ Module implements base class for databases
 
 
 import json
-from pathlib import Path
+import os
 from typing import Optional
 
+from common.config import settings
+from common.exceptions import NotExist
 from pydantic import BaseModel
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
-
-from common.config import settings
-from common.exceptions import NotExist
 
 
 class DatabaseFactory:
@@ -29,13 +28,10 @@ class DatabaseFactory:
         port: Optional[str]
         name: str
 
-        def get_src(self, client: str = None) -> str:
-            path = Path(__file__).resolve().parent.parent
-            if client:
-                return f'sqlite+pysqlite:///{path}/client/{client}_database.sqlite3'
-
+        def get_src(self) -> str:
+            path = os.getcwd()
             if self.dialect == 'sqlite':
-                return f'sqlite+pysqlite:///{path}/server/{self.name}'
+                return f'sqlite+pysqlite:///{path}/{self.name}'
             else:
                 return f'{self.dialect}+{self.driver}://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}'
 
@@ -43,8 +39,6 @@ class DatabaseFactory:
         self.__client = client
         self.__name = settings.DATABASE
         self.kind = classname
-        if self.kind == 'ClientDatabase':
-            self.__name = 'client'
         self.__get_db_creds()
 
     def __get_db_creds(self):
@@ -52,8 +46,8 @@ class DatabaseFactory:
         collect database credentials from config file and set it into {__creds} variable
         :return: None
         """
-        path = Path(__file__).resolve().parent
-        with open(f'{path}/config.json', 'r', encoding='utf-8') as f:
+        path = os.getcwd()
+        with open(f'{path}/db/config.json', 'r', encoding='utf-8') as f:
             databases = json.load(f)
         self.__creds = self.Database.parse_obj(databases[self.kind][self.__name])
 
@@ -63,7 +57,7 @@ class DatabaseFactory:
         :return: Engine
         """
         if self.__creds.dialect == 'sqlite':
-            return create_engine(self.__creds.get_src(self.__client), connect_args={"check_same_thread": False})
+            return create_engine(self.__creds.get_src(), connect_args={"check_same_thread": False})
         return create_engine(self.__creds.get_src())
 
 
@@ -86,7 +80,7 @@ class Database:
         :return: sqlalchemy.Engine
         """
 
-        factory = DatabaseFactory(self.__class__.__name__, client)
+        factory = DatabaseFactory(self.__class__.__name__)
         return factory.get_engine()
 
     def _connect(self, client: str) -> Session:

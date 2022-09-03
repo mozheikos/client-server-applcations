@@ -8,8 +8,8 @@ import sys
 from PyQt5.QtWidgets import QApplication
 
 from common.config import settings
-from server.server_core import TCPSocketServer, RequestHandler
-from server.server_gui import ServerUI, UI
+from server_core import TCPSocketServer, RequestHandler
+from server_gui import ServerUI, UI
 
 if __name__ == '__main__':
     srv = TCPSocketServer(

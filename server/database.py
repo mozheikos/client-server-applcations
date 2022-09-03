@@ -13,7 +13,7 @@ from common.config import settings
 from common.exceptions import AlreadyExist, NotExist
 from common.utils import get_hashed_password
 from db.core import Database
-from server.models import Client, create_tables, ClientHistory, Chat, MessageHistory
+from models import Client, create_tables, ClientHistory, Chat, MessageHistory
 from templates.templates import User, Message
 
 

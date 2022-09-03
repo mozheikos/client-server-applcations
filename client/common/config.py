@@ -4,8 +4,8 @@ Gets all application settings from config.json
 
 
 import json
+import os
 from enum import Enum
-from pathlib import Path
 
 from pydantic import BaseModel
 
@@ -36,8 +36,8 @@ class Settings(BaseModel):
 
     def __init__(self):
         super(Settings, self).__init__()
-        path = Path(__file__).resolve().parent
-        with open(f'{path}/config.json', 'r', encoding='utf-8') as f:
+        path = os.getcwd()
+        with open(f'{path}/common/config.json', 'r', encoding='utf-8') as f:
             data = json.load(f)
         self.__set_attributes(data)
 

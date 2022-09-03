@@ -7,8 +7,8 @@ import sys
 
 from PyQt5.QtWidgets import QApplication
 
-from client.client_core import TCPSocketClient
-from client.client_gui import ClientUI, UI
+from client_core import TCPSocketClient
+from client_gui import ClientUI, UI
 
 if __name__ == '__main__':
     clt = TCPSocketClient(host='localhost', port=7777, buffer=8192, connect=False)

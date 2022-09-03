@@ -11,8 +11,8 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMainWindow, QPushButton, QListWidgetItem
 
-from client.client_core import TCPSocketClient
-from client.gui.client_ui import Ui_MainWindow
+from client_core import TCPSocketClient
+from gui.client_ui import Ui_MainWindow
 from common.config import settings
 from templates.templates import Request, User
 
